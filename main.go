@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -19,11 +20,17 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-var token = "MzU1ODczMzk1MTY0MDUzNTEy.DKNDaw.5z1RFro_lwhNxeWAXEgkLCZze8k"
+var (
+	tokenProd = "MzU1ODczMzk1MTY0MDUzNTEy.DKNDaw.5z1RFro_lwhNxeWAXEgkLCZze8k"
+	tokenDev  = "MzYwNTUxMzQyODgxNjM2MzU1.DKXNJA.dt-WP50VAfItRGHQZgpgoje_Y10"
+	useDev    = flag.Bool("dev", false, "Use development mode")
+)
 
 func main() {
-	if token == "" {
-		log.Fatal("You need to specify the token")
+	flag.Parse()
+	var token = tokenProd
+	if *useDev {
+		token = tokenDev
 	}
 
 	dg, err := discordgo.New("Bot " + token)
@@ -51,7 +58,6 @@ func main() {
 var helpMessage = `You can use the following commands:
 
 	/mods character : display mods on a character
-	/reload-profiles : read again the #swgoh-gg channel links
 	/info character : display character basic stats
 
 You need to setup your profile at the #swgoh-gg channel`
@@ -67,8 +73,8 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		args := strings.Fields(m.Content)[1:]
 		profile, ok := profiles[m.Author.String()]
 		if !ok {
-			send(s, m.ChannelID, "Be-booh-bo! @%s, it looks like you forgot to setup your profile at #swgoh-gg", m.Author.String())
 			loadProfiles(s)
+			send(s, m.ChannelID, "Be-booh-bo! @%s, it looks like you forgot to setup your profile at #swgoh-gg", m.Author.String())
 			return
 		}
 		char := strings.TrimSpace(strings.Join(args, " "))
@@ -76,14 +82,14 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			send(s, m.ChannelID, "Be-booh-bo... you need to provide a character name. Try /mods tfp")
 			return
 		}
-		send(s, m.ChannelID, "Be-boop! Let me check your mods for '%s' @ '%s' ...", char, profile)
+		send(s, m.ChannelID, "Be-boop! Let me check mods for '%s' on '%s' profile...", char, profile)
 		targetUrl := fmt.Sprintf("https://swgoh.gg/u/%s/collection/%s/", profile, swgohgg.CharSlug(swgohgg.CharName(char)))
 		querySelector := ".list-group.media-list.media-list-stream:nth-child(2)"
 		renderPageHost := "https://us-central1-ronoaldoconsulting.cloudfunctions.net"
-		renderUrl := fmt.Sprintf("%s/pageRender?url=%s&querySelector=%s", renderPageHost, targetUrl, querySelector)
+		renderUrl := fmt.Sprintf("%s/pageRender?url=%s&querySelector=%s&ts=%d", renderPageHost, targetUrl, querySelector, time.Now().UnixNano())
 		prefetch(renderUrl)
 		s.ChannelMessageSendEmbed(m.ChannelID, &discordgo.MessageEmbed{
-			Title:       fmt.Sprintf("%s mods on %s", profile, swgohgg.CharName(char)),
+			Title:       fmt.Sprintf("%s's %s mods", profile, swgohgg.CharName(char)),
 			Description: "@" + m.Author.String(),
 			Image: &discordgo.MessageEmbedImage{
 				URL: renderUrl,
