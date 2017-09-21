@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -47,14 +48,21 @@ func main() {
 	dg.Close()
 }
 
+var helpMessage = `You can use the following commands:
+
+	/mods character : display mods on a character
+	/reload-profiles : read again the #swgoh-gg channel links
+	/info character : display character basic stats
+
+You need to setup your profile at the #swgoh-gg channel`
+
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	log.Printf("RECV: #%v %v: %v", m.ChannelID, m.Author, m.Content)
 	if m.Author.ID == s.State.User.ID {
-		log.Printf("INFO: Ignoring self-message!")
 		return
 	}
-	if strings.HasPrefix(m.Content, "/reload-profiles") {
-		loadProfiles(s)
+	if strings.HasPrefix(m.Content, "/help") {
+		send(s, m.ChannelID, helpMessage)
 	} else if strings.HasPrefix(m.Content, "/mods") {
 		args := strings.Fields(m.Content)[1:]
 		profile, ok := profiles[m.Author.String()]
@@ -74,7 +82,45 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		renderPageHost := "https://us-central1-ronoaldoconsulting.cloudfunctions.net"
 		renderUrl := fmt.Sprintf("%s/pageRender?url=%s&querySelector=%s", renderPageHost, targetUrl, querySelector)
 		prefetch(renderUrl)
-		send(s, m.ChannelID, "%s: here we go: %v", m.Author, renderUrl)
+		s.ChannelMessageSendEmbed(m.ChannelID, &discordgo.MessageEmbed{
+			Title:       fmt.Sprintf("%s mods on %s", profile, swgohgg.CharName(char)),
+			Description: "@" + m.Author.String(),
+			Image: &discordgo.MessageEmbedImage{
+				URL: renderUrl,
+			},
+		})
+	} else if strings.HasPrefix(m.Content, "/reload-profiles") {
+		loadProfiles(s)
+	} else if strings.HasPrefix(m.Content, "/info") {
+		args := strings.Fields(m.Content)[1:]
+		profile, ok := profiles[m.Author.String()]
+		if !ok {
+			send(s, m.ChannelID, "Be-booh-bo! @%s, it looks like you forgot to setup your profile at #swgoh-gg", m.Author.String())
+			loadProfiles(s)
+			return
+		}
+		char := strings.TrimSpace(strings.Join(args, " "))
+		if char == "" {
+			send(s, m.ChannelID, "Be-booh-bo... you need to provide a character name. Try /mods tfp")
+			return
+		}
+		c := swgohgg.NewClient(profile)
+		stats, err := c.CharacterStats(char)
+		if err != nil {
+			send(s, m.ChannelID, "Oops, that did not worked: "+err.Error())
+			return
+		}
+		s.ChannelMessageSendEmbed(m.ChannelID, &discordgo.MessageEmbed{
+			Title: fmt.Sprintf("%s stats for %s", profile, swgohgg.CharName(char)),
+			Fields: []*discordgo.MessageEmbedField{
+				{"Health", strconv.FormatInt(stats.Health, 10), true},
+				{"Protection", strconv.FormatInt(stats.Protection, 10), true},
+				{"Speed", strconv.FormatInt(stats.Speed, 10), true},
+				{"Potency", fmt.Sprintf("%.02f%%", stats.Potency), true},
+				{"Tenacity", fmt.Sprintf("%.02f%%", stats.Tenacity), true},
+				{"Critical Damage", fmt.Sprintf("%d%%", stats.CriticalDamage), true},
+			},
+		})
 	}
 }
 
