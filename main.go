@@ -63,10 +63,10 @@ var helpMessage = `You can use the following commands:
 You need to setup your profile at the #swgoh-gg channel`
 
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
-	log.Printf("RECV: #%v %v: %v", m.ChannelID, m.Author, m.Content)
 	if m.Author.ID == s.State.User.ID {
 		return
 	}
+	log.Printf("RECV: #%v %v: %v", m.ChannelID, m.Author, m.Content)
 	if strings.HasPrefix(m.Content, "/help") {
 		send(s, m.ChannelID, helpMessage)
 	} else if strings.HasPrefix(m.Content, "/mods") {
