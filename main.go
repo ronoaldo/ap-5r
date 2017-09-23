@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -66,12 +67,17 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if m.Author.ID == s.State.User.ID {
 		return
 	}
+	channel, err := s.Channel(m.ChannelID)
+	if err != nil {
+		send(s, m.ChannelID, "Be-boooh-bo... unable to identify channel for this message")
+		return
+	}
 	log.Printf("RECV: #%v %v: %v", m.ChannelID, m.Author, m.Content)
 	if strings.HasPrefix(m.Content, "/help") {
 		send(s, m.ChannelID, helpMessage)
 	} else if strings.HasPrefix(m.Content, "/mods") {
 		args := strings.Fields(m.Content)[1:]
-		profile, ok := profiles[m.Author.String()]
+		profile, ok := profiles[channel.GuildID+":"+m.Author.String()]
 		if !ok {
 			loadProfiles(s)
 			send(s, m.ChannelID, "Be-booh-bo! @%s, it looks like you forgot to setup your profile at #swgoh-gg", m.Author.String())
@@ -107,7 +113,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 		char := strings.TrimSpace(strings.Join(args, " "))
 		if char == "" {
-			send(s, m.ChannelID, "Be-booh-bo... you need to provide a character name. Try /mods tfp")
+			send(s, m.ChannelID, "Be-booh-bo... you need to provide a character name. Try /info tfp")
 			return
 		}
 		c := swgohgg.NewClient(profile)
@@ -127,6 +133,84 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 				{"Critical Damage", fmt.Sprintf("%d%%", stats.CriticalDamage), true},
 			},
 		})
+	} else if strings.HasPrefix(m.Content, "/server-info") {
+		args := strings.Fields(m.Content)[1:]
+		char := strings.TrimSpace(strings.Join(args, " "))
+		if char == "" {
+			send(s, m.ChannelID, "Be-booh-bo... you need to provide a character name. Try /server-info tfp")
+			return
+		}
+		guildProfiles := make([]string, 0, len(profiles))
+		for k, profile := range profiles {
+			if strings.HasPrefix(k, channel.GuildID+":") {
+				guildProfiles = append(guildProfiles, profile)
+			}
+		}
+		send(s, m.ChannelID, "Be-boop! Loading %d profiles in the server. This may take a while...", len(guildProfiles))
+		stars := make(map[int]int)
+		gear := make(map[int]int)
+		zetaCount := make(map[string]int)
+
+		total := 0
+		gg := swgohgg.NewClient("")
+		allZetas, err := gg.Zetas()
+		if err != nil {
+			send(s, m.ChannelID, "Warning: I'll be skipping zetas as I could not load them")
+		}
+		zetas := make([]swgohgg.Ability, 0)
+		for _, zeta := range allZetas {
+			if strings.ToLower(zeta.Character) == strings.ToLower(swgohgg.CharName(char)) {
+				zetas = append(zetas, zeta)
+			}
+		}
+		for i, profile := range guildProfiles {
+			// Fetch char info for each profile
+			gg.Profile(profile)
+			stats, err := gg.CharacterStats(char)
+			if err != nil {
+				// if 404, the player just does not have him active?
+				send(s, m.ChannelID, "Oops, stopped at %d: %v", i, err.Error())
+				return
+			}
+			stars[int(stats.Stars)]++
+			gear[int(stats.GearLevel)]++
+			for _, skill := range stats.Skills {
+				for _, zeta := range zetas {
+					if strings.ToLower(skill.Name) == strings.ToLower(zeta.Name) && skill.Level == 8 {
+						zetaCount[zeta.Name]++
+					}
+				}
+			}
+			total++
+		}
+		var msg bytes.Buffer
+		fmt.Fprintf(&msg, "From %d confirmed players, %d have %s\n", len(guildProfiles), total, swgohgg.CharName(char))
+		fmt.Fprintf(&msg, "\n*Stars:*\n")
+		for i := 7; i >= 1; i-- {
+			count, ok := stars[i]
+			if !ok {
+				continue
+			}
+			fmt.Fprintf(&msg, "**%d** at %d stars\n", count, i)
+		}
+		fmt.Fprintf(&msg, "\n*Gear:*\n")
+		for i := 12; i > 1; i-- {
+			count, ok := gear[i]
+			if !ok {
+				continue
+			}
+			fmt.Fprintf(&msg, "**%d** at G%d\n", count, i)
+		}
+		fmt.Fprintf(&msg, "\n*Zetas:*\n")
+		for zeta, count := range zetaCount {
+			fmt.Fprintf(&msg, "**%d** zetas on *%s*\n", count, zeta)
+		}
+		if len(zetaCount) == 0 {
+			fmt.Fprintf(&msg, "No one was brave enough")
+		}
+		send(s, m.ChannelID, msg.String())
+	} else if strings.HasPrefix(m.Content, "/share-this-bot") {
+		send(s, m.ChannelID, "https://discordapp.com/oauth2/authorize?client_id=360551342881636355&scope=bot&permissions=511040")
 	}
 }
 
@@ -213,7 +297,7 @@ func loadProfiles(s *discordgo.Session) {
 					log.Printf("Not a valid profile %v", m.Content)
 					continue
 				}
-				profiles[m.Author.String()] = profile
+				profiles[guild.ID+":"+m.Author.String()] = profile
 				log.Printf("Detected %v: %v", m.Author, profile)
 			}
 			if len(messages) <= 100 {
