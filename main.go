@@ -163,14 +163,16 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 				zetas = append(zetas, zeta)
 			}
 		}
-		for i, profile := range guildProfiles {
+		for _, profile := range guildProfiles {
 			// Fetch char info for each profile
 			gg.Profile(profile)
 			stats, err := gg.CharacterStats(char)
+			time.Sleep(100 * time.Millisecond)
 			if err != nil {
 				// if 404, the player just does not have him active?
-				send(s, m.ChannelID, "Oops, stopped at %d: %v", i, err.Error())
-				return
+				//send(s, m.ChannelID, "Oops, stopped at %d: %v", i, err.Error())
+				log.Printf("ERROR: %v", err)
+				continue
 			}
 			stars[int(stats.Stars)]++
 			gear[int(stats.GearLevel)]++
