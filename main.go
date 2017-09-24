@@ -14,8 +14,6 @@ import (
 	"syscall"
 	"time"
 
-	"regexp"
-
 	"ronoaldo.gopkg.net/swgoh/swgohgg"
 
 	"github.com/bwmarrin/discordgo"
@@ -24,9 +22,12 @@ import (
 var (
 	tokenProd = "MzU1ODczMzk1MTY0MDUzNTEy.DKNDaw.5z1RFro_lwhNxeWAXEgkLCZze8k"
 	tokenDev  = "MzYwNTUxMzQyODgxNjM2MzU1.DKXNJA.dt-WP50VAfItRGHQZgpgoje_Y10"
-	useDev    = flag.Bool("dev", false, "Use development mode")
+	useDev    = flag.Bool("dev", asBool(os.Getenv("USE_DEV")), "Use development mode")
+
+	guildCache = make(map[string]*Cache)
 )
 
+// main runs the main loop of our bot application.
 func main() {
 	flag.Parse()
 	var token = tokenProd
@@ -50,9 +51,9 @@ func main() {
 	// Wait here until CTRL-C or other term signal is received.
 	fmt.Println("Bot is now running.  Press CTRL-C to exit.")
 	sc := make(chan os.Signal, 1)
-	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
+	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill, syscall.SIGKILL)
 	<-sc
-
+	fmt.Println("Trying to close sessions...")
 	dg.Close()
 }
 
@@ -60,26 +61,39 @@ var helpMessage = `You can use the following commands:
 
 	/mods character : display mods on a character
 	/info character : display character basic stats
+	/server-info character : display server-wide character stats
 
 You need to setup your profile at the #swgoh-gg channel`
 
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
-	if m.Author.ID == s.State.User.ID {
+	// Skip messages from self or non-command messages
+	if m.Author.ID == s.State.User.ID || !strings.HasPrefix(m.Content, "/") {
 		return
 	}
+
+	// Load data from cache to prepare for command parsing.
 	channel, err := s.Channel(m.ChannelID)
 	if err != nil {
 		send(s, m.ChannelID, "Be-boooh-bo... unable to identify channel for this message")
 		return
 	}
+	cache, ok := guildCache[channel.GuildID]
+	if !ok {
+		log.Printf("INFO: no cache for guild ID %s, initializing one", channel.GuildID)
+		// Initialize new cache and build guild profile cache
+		cache = NewCache(channel.GuildID)
+		cache.ReloadProfiles(s)
+	}
+	log.Printf("INFO: parsing command on guild %s. Cached profiles ready")
+
 	log.Printf("RECV: #%v %v: %v", m.ChannelID, m.Author, m.Content)
 	if strings.HasPrefix(m.Content, "/help") {
 		send(s, m.ChannelID, helpMessage)
 	} else if strings.HasPrefix(m.Content, "/mods") {
 		args := strings.Fields(m.Content)[1:]
-		profile, ok := profiles[channel.GuildID+":"+m.Author.String()]
+		cache.ReloadProfiles(s)
+		profile, ok := cache.UserProfile(m.Author.String())
 		if !ok {
-			loadProfiles(s)
 			send(s, m.ChannelID, "Be-booh-bo! @%s, it looks like you forgot to setup your profile at #swgoh-gg", m.Author.String())
 			return
 		}
@@ -102,13 +116,14 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			},
 		})
 	} else if strings.HasPrefix(m.Content, "/reload-profiles") {
-		loadProfiles(s)
+		cache.ReloadProfiles(s)
+		send(s, m.ChannelID, "Reloaded profiles for the server.")
 	} else if strings.HasPrefix(m.Content, "/info") {
 		args := strings.Fields(m.Content)[1:]
-		profile, ok := profiles[m.Author.String()]
+		cache.ReloadProfiles(s)
+		profile, ok := cache.UserProfile(m.Author.String())
 		if !ok {
 			send(s, m.ChannelID, "Be-booh-bo! @%s, it looks like you forgot to setup your profile at #swgoh-gg", m.Author.String())
-			loadProfiles(s)
 			return
 		}
 		char := strings.TrimSpace(strings.Join(args, " "))
@@ -140,12 +155,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			send(s, m.ChannelID, "Be-booh-bo... you need to provide a character name. Try /server-info tfp")
 			return
 		}
-		guildProfiles := make([]string, 0, len(profiles))
-		for k, profile := range profiles {
-			if strings.HasPrefix(k, channel.GuildID+":") {
-				guildProfiles = append(guildProfiles, profile)
-			}
-		}
+		guildProfiles := cache.ListProfiles()
 		send(s, m.ChannelID, "Be-boop! Loading %d profiles in the server. This may take a while...", len(guildProfiles))
 		stars := make(map[int]int)
 		gear := make(map[int]int)
@@ -212,15 +222,23 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 		send(s, m.ChannelID, msg.String())
 	} else if strings.HasPrefix(m.Content, "/share-this-bot") {
-		send(s, m.ChannelID, "https://discordapp.com/oauth2/authorize?client_id=360551342881636355&scope=bot&permissions=511040")
+		if *useDev {
+			send(s, m.ChannelID, "https://discordapp.com/oauth2/authorize?client_id=360551342881636355&scope=bot&permissions=511040")
+			return
+		}
+		send(s, m.ChannelID, "https://discordapp.com/oauth2/authorize?client_id=355873395164053512&scope=bot&permissions=511040")
+		return
 	}
 }
 
+// send is a helper function that formats a text message and send to the target channel.
 func send(s *discordgo.Session, channelID, message string, args ...interface{}) error {
 	_, err := s.ChannelMessageSend(channelID, fmt.Sprintf(message, args...))
 	return err
 }
 
+// prefetch downloads and discards an URL. It is intended to fetch and to let server
+// cache data.
 func prefetch(url string) error {
 	resp, err := http.Head(url)
 	log.Printf("PREF: %s prefetched (resp %v)", url, resp)
@@ -230,6 +248,9 @@ func prefetch(url string) error {
 	return err
 }
 
+// onGuildJoin is currently responsible to log new guilds. We will be adding
+// some welcome message on the first channel, or to the person that adds the
+// bot to the channel.
 func onGuildJoin(s *discordgo.Session, event *discordgo.GuildCreate) {
 	if event.Guild.Unavailable {
 		return
@@ -241,84 +262,16 @@ func onGuildJoin(s *discordgo.Session, event *discordgo.GuildCreate) {
 	}
 }
 
-var (
-	profiles    = make(map[string]string)
-	SWGoHChanId = "350342664006270976"
-)
-
-var profileRe = regexp.MustCompile("https?://swgoh.gg/u/([^/]+)/?")
-
-func extractProfile(src string) string {
-	results := profileRe.FindAllStringSubmatch(src, -1)
-	if len(results) == 0 {
-		return ""
-	}
-	if len(results[0]) == 0 {
-		return ""
-	}
-	return results[0][1]
-}
-
-func loadProfiles(s *discordgo.Session) {
-	guilds, err := s.UserGuilds(0, "", "")
-	if err != nil {
-		log.Printf("Error loading my guilds...")
-		return
-	}
-	for _, guild := range guilds {
-		log.Printf("> Looking up #swgoh-gg channel for guild %s", guild.Name)
-		// Lookup the #swgoh-gg channel to parse profiles
-		channels, err := s.GuildChannels(guild.ID)
-		if err != nil {
-			log.Printf("Error loading channels. Skipping this guild (%v)", err)
-			continue
-		}
-		chanID := ""
-		for _, ch := range channels {
-			if ch.Name == "swgoh-gg" {
-				chanID = ch.ID
-				break
-			}
-		}
-		if chanID == "" {
-			log.Printf("No channel ID found with name #swgoh-gg. Skipping this guild.")
-			continue
-		}
-		after := ""
-		for {
-			log.Printf("Loading messages after %s", after)
-			messages, err := s.ChannelMessages(chanID, 100, "", after, "")
-			if err != nil {
-				log.Printf("ERR: loading messages from #swgoh-gg channel: %v", err)
-			}
-			log.Printf("Currently with %d", len(messages))
-			for _, m := range messages {
-				after = m.ID
-				profile := extractProfile(m.Content)
-				if profile == "" {
-					log.Printf("Not a valid profile %v", m.Content)
-					continue
-				}
-				profiles[guild.ID+":"+m.Author.String()] = profile
-				log.Printf("Detected %v: %v", m.Author, profile)
-			}
-			if len(messages) <= 100 {
-				break
-			}
-			log.Printf("Waiting a bit to avoid doing shit ...")
-			time.Sleep(10 * time.Second)
-		}
-	}
-	log.Printf("Full profile list loaded %d", len(profiles))
-}
-
 // This function will be called (due to AddHandler above) when the bot receives
 // the "ready" event from Discord.
 func ready(s *discordgo.Session, event *discordgo.Ready) {
-	s.UpdateStatus(0, "Galactic War")
-	loadProfiles(s)
+	version := os.Getenv("BOT_VERSION")
+	s.UpdateStatus(0, "Defeating the rebel scum at Arena")
+	s.UserUpdate("", "", fmt.Sprintf("RA-7 Protocol Droid (%s)", version), "", "")
 }
 
+// logJSON takes a value and serializes it to the log stream  as a JSON
+// object. This is intended for debugging only.
 func logJSON(m string, v interface{}) {
 	b, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
@@ -326,4 +279,12 @@ func logJSON(m string, v interface{}) {
 		return
 	}
 	log.Printf(" %s: %s", m, string(b))
+}
+
+func asBool(src string) bool {
+	res, err := strconv.ParseBool(src)
+	if err != nil {
+		return false
+	}
+	return res
 }
