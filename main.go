@@ -57,13 +57,14 @@ func main() {
 	dg.Close()
 }
 
-var helpMessage = `You can use the following commands:
+var helpMessage = `Hi %s, I'm AP-5R and I'm the Empire protocol droid unit that survivied the Death Star destruction. While I understand many languages, please use the following commands to contact me in this secure channel:
 
-	/mods character : display mods on a character
-	/info character : display character basic stats
-	/server-info character : display server-wide character stats
+**/mods** *character*: if you want me to deliver an image of your mods on a character
+**/info** *character*: if you want me to display your current character stats
+**/server-info** *character*: if you want me to do some number chrunch and display server-wide stats about a character
+**/reload-profiles**: this can be used to instruct me to do a reload of profiles. You don't need to, but just in case.
 
-You need to setup your profile at the #swgoh-gg channel`
+I'll assume that all users shared their profile at the #swgoh-gg channel. Please ask your server admin to create one. This is a requirement for me to properly function here.`
 
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	// Skip messages from self or non-command messages
@@ -88,21 +89,21 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	log.Printf("RECV: #%v %v: %v", m.ChannelID, m.Author, m.Content)
 	if strings.HasPrefix(m.Content, "/help") {
-		send(s, m.ChannelID, helpMessage)
+		send(s, m.ChannelID, helpMessage, m.Author.Mention())
 	} else if strings.HasPrefix(m.Content, "/mods") {
 		args := strings.Fields(m.Content)[1:]
 		cache.ReloadProfiles(s)
 		profile, ok := cache.UserProfile(m.Author.String())
 		if !ok {
-			send(s, m.ChannelID, "Be-booh-bo! @%s, it looks like you forgot to setup your profile at #swgoh-gg", m.Author.String())
+			send(s, m.ChannelID, "Oh, interesintg. %s, it looks like you forgot to setup your profile at #swgoh-gg.", m.Author.Mention())
 			return
 		}
 		char := strings.TrimSpace(strings.Join(args, " "))
 		if char == "" {
-			send(s, m.ChannelID, "Be-booh-bo... you need to provide a character name. Try /mods tfp")
+			send(s, m.ChannelID, "%s, use this command with a character name. Try this: /mods tfp", m.Author.Mention())
 			return
 		}
-		send(s, m.ChannelID, "Be-boop! Let me check mods for '%s' on '%s' profile...", char, profile)
+		send(s, m.ChannelID, "Roger Roger! Let me check mods for '%s' on '%s' profile...", char, profile)
 		targetUrl := fmt.Sprintf("https://swgoh.gg/u/%s/collection/%s/", profile, swgohgg.CharSlug(swgohgg.CharName(char)))
 		querySelector := ".list-group.media-list.media-list-stream:nth-child(2)"
 		renderPageHost := "https://us-central1-ronoaldoconsulting.cloudfunctions.net"
@@ -110,31 +111,36 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		prefetch(renderUrl)
 		s.ChannelMessageSendEmbed(m.ChannelID, &discordgo.MessageEmbed{
 			Title:       fmt.Sprintf("%s's %s mods", profile, swgohgg.CharName(char)),
-			Description: "@" + m.Author.String(),
+			Description: "Here is the thing you asked " + m.Author.Mention(),
 			Image: &discordgo.MessageEmbedImage{
 				URL: renderUrl,
 			},
 		})
 	} else if strings.HasPrefix(m.Content, "/reload-profiles") {
-		cache.ReloadProfiles(s)
-		send(s, m.ChannelID, "Reloaded profiles for the server.")
+		send(s, m.ChannelID, "Copy that. I'll scan the channel #swgoh-gg again...")
+		count, err := cache.ReloadProfiles(s)
+		if err != nil {
+			send(s, m.ChannelID, "Oh no! We're doomed! (err=%v)", err)
+			return
+		}
+		send(s, m.ChannelID, "Reloaded profiles for the server. I found %d valid links.", count)
 	} else if strings.HasPrefix(m.Content, "/info") {
 		args := strings.Fields(m.Content)[1:]
 		cache.ReloadProfiles(s)
 		profile, ok := cache.UserProfile(m.Author.String())
 		if !ok {
-			send(s, m.ChannelID, "Be-booh-bo! @%s, it looks like you forgot to setup your profile at #swgoh-gg", m.Author.String())
+			send(s, m.ChannelID, "%s, not sure if I told you before, but you forgot to setup your profile at #swgoh-gg", m.Author.Mention())
 			return
 		}
 		char := strings.TrimSpace(strings.Join(args, " "))
 		if char == "" {
-			send(s, m.ChannelID, "Be-booh-bo... you need to provide a character name. Try /info tfp")
+			send(s, m.ChannelID, "Good, you are learning! But you need to provide a character name. Try /info tfp")
 			return
 		}
 		c := swgohgg.NewClient(profile)
 		stats, err := c.CharacterStats(char)
 		if err != nil {
-			send(s, m.ChannelID, "Oops, that did not worked: "+err.Error())
+			send(s, m.ChannelID, "Oops, that did not worked as expected: %v. I hope nothing is broken ....", err.Error())
 			return
 		}
 		s.ChannelMessageSendEmbed(m.ChannelID, &discordgo.MessageEmbed{
@@ -152,11 +158,11 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		args := strings.Fields(m.Content)[1:]
 		char := strings.TrimSpace(strings.Join(args, " "))
 		if char == "" {
-			send(s, m.ChannelID, "Be-booh-bo... you need to provide a character name. Try /server-info tfp")
+			send(s, m.ChannelID, "Oh, there we go again. You need to provide me a character name. Try /server-info tfp")
 			return
 		}
 		guildProfiles := cache.ListProfiles()
-		send(s, m.ChannelID, "Be-boop! Loading %d profiles in the server. This may take a while...", len(guildProfiles))
+		send(s, m.ChannelID, "Loading %d profiles in the server. This may take a while. You can take some tea.", len(guildProfiles))
 		stars := make(map[int]int)
 		gear := make(map[int]int)
 		zetaCount := make(map[string]int)
@@ -165,7 +171,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		gg := swgohgg.NewClient("")
 		allZetas, err := gg.Zetas()
 		if err != nil {
-			send(s, m.ChannelID, "Warning: I'll be skipping zetas as I could not load them")
+			send(s, m.ChannelID, "Warning: I'll be skipping zetas as I could not load them. Something is wrong probably. (err=%v)", err)
 		}
 		zetas := make([]swgohgg.Ability, 0)
 		for _, zeta := range allZetas {
@@ -173,6 +179,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 				zetas = append(zetas, zeta)
 			}
 		}
+		errCount := 0
 		for _, profile := range guildProfiles {
 			// Fetch char info for each profile
 			gg.Profile(profile)
@@ -182,6 +189,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 				// if 404, the player just does not have him active?
 				//send(s, m.ChannelID, "Oops, stopped at %d: %v", i, err.Error())
 				log.Printf("ERROR: %v", err)
+				errCount++
 				continue
 			}
 			stars[int(stats.Stars)]++
@@ -218,8 +226,9 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			fmt.Fprintf(&msg, "**%d** zetas on *%s*\n", count, zeta)
 		}
 		if len(zetaCount) == 0 {
-			fmt.Fprintf(&msg, "No one was brave enough")
+			fmt.Fprintf(&msg, "No one was brave enough...")
 		}
+		log.Printf("INFO: %d profiles seems to be down. Need to improve error detection.", errCount)
 		send(s, m.ChannelID, msg.String())
 	} else if strings.HasPrefix(m.Content, "/share-this-bot") {
 		if *useDev {

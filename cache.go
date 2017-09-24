@@ -111,10 +111,3 @@ func extractProfile(src string) string {
 	}
 	return results[0][1]
 }
-
-// loadProfiles load and fill all profiles from the #swgoh-gg channel.
-// Currently, the profiles are not fully loaded from the swgoh.gg site,
-// they are just cached and linked to usernames so commands don't need
-// to explicitly specify a nickname.
-func loadProfiles(s *discordgo.Session, guildID string) {
-}
