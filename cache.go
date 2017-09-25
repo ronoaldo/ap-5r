@@ -27,7 +27,7 @@ func NewCache(guildID string) *Cache {
 // SetUserProfile stores the user profile in cache
 func (c *Cache) SetUserProfile(user, profile string) {
 	c.profilesMutex.Lock()
-	defer c.pprofilesMutex.Unlock()
+	defer c.profilesMutex.Unlock()
 	c.profiles[user] = profile
 }
 
@@ -43,15 +43,19 @@ func (c *Cache) ListProfiles() (res []string) {
 	return res
 }
 
+func (c *Cache) RemoveAllProfiles() {
+	// Cleanup all profiles of the given guild
+	c.profilesMutex.Lock()
+	defer c.profilesMutex.Unlock()
+	c.profiles = make(map[string]string)
+}
+
 func (c *Cache) ReloadProfiles(s *discordgo.Session) (int, error) {
 	guilds, err := s.UserGuilds(0, "", "")
 	if err != nil {
 		return 0, err
 	}
-	// Cleanup all profiles of the given guild
-	c.profilesMutex.Lock()
-	defer c.pprofilesMutex.Unlock()
-	c.profiles = make(map[string]string)
+	c.RemoveAllProfiles()
 
 	for _, guild := range guilds {
 		if guild.ID != c.guildID {
@@ -79,7 +83,7 @@ func (c *Cache) ReloadProfiles(s *discordgo.Session) (int, error) {
 			log.Printf("ERROR: Loading messages after id '%s'", after)
 			messages, err := s.ChannelMessages(chanID, 100, "", after, "")
 			if err != nil {
-				send(s, chanID, "Oh, wait. I could not read messages on %v#%v", guild.Name, ch.Name)
+				send(s, chanID, "Oh, wait. I could not read messages on %v's #swgoh-gg channel", guild.Name)
 				log.Printf("ERROR: loading messages from #swgoh-gg channel: %v", err)
 				continue
 			}
