@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"regexp"
+	"sync"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -10,10 +11,12 @@ import (
 
 // Cache holds guild-based cache information.
 type Cache struct {
-	guildID  string
-	profiles map[string]string
+	guildID       string
+	profiles      map[string]string
+	profilesMutex sync.Mutex
 }
 
+// NewCache creates a new cache for the given guild ID.
 func NewCache(guildID string) *Cache {
 	return &Cache{
 		guildID:  guildID,
@@ -21,7 +24,10 @@ func NewCache(guildID string) *Cache {
 	}
 }
 
+// SetUserProfile stores the user profile in cache
 func (c *Cache) SetUserProfile(user, profile string) {
+	c.profilesMutex.Lock()
+	defer c.pprofilesMutex.Unlock()
 	c.profiles[user] = profile
 }
 
@@ -43,6 +49,8 @@ func (c *Cache) ReloadProfiles(s *discordgo.Session) (int, error) {
 		return 0, err
 	}
 	// Cleanup all profiles of the given guild
+	c.profilesMutex.Lock()
+	defer c.pprofilesMutex.Unlock()
 	c.profiles = make(map[string]string)
 
 	for _, guild := range guilds {
@@ -52,7 +60,7 @@ func (c *Cache) ReloadProfiles(s *discordgo.Session) (int, error) {
 		log.Printf("> Looking up #swgoh-gg channel for guild %s", guild.Name)
 		channels, err := s.GuildChannels(guild.ID)
 		if err != nil {
-			log.Printf("Error loading channels. Skipping this guild (%v)", err)
+			log.Printf("ERROR: loading channels. Skipping this guild (%v)", err)
 			continue
 		}
 		chanID := ""
@@ -63,35 +71,36 @@ func (c *Cache) ReloadProfiles(s *discordgo.Session) (int, error) {
 			}
 		}
 		if chanID == "" {
-			log.Printf("No channel ID found with name #swgoh-gg. Skipping this guild.")
+			log.Printf("ERROR: No channel ID found with name #swgoh-gg. Skipping this guild.")
 			continue
 		}
 		after := ""
 		for {
-			log.Printf("Loading messages after %s", after)
+			log.Printf("ERROR: Loading messages after id '%s'", after)
 			messages, err := s.ChannelMessages(chanID, 100, "", after, "")
 			if err != nil {
-				log.Printf("ERR: loading messages from #swgoh-gg channel: %v", err)
+				send(s, chanID, "Oh, wait. I could not read messages on %v#%v", guild.Name, ch.Name)
+				log.Printf("ERROR: loading messages from #swgoh-gg channel: %v", err)
+				continue
 			}
-			log.Printf("Currently with %d", len(messages))
+			log.Printf("> Currently with %d", len(messages))
 			for _, m := range messages {
 				after = m.ID
 				profile := extractProfile(m.Content)
 				if profile == "" {
-					log.Printf("Not a valid profile %v", m.Content)
 					continue
 				}
 				c.SetUserProfile(m.Author.String(), profile)
-				log.Printf("Detected %v: %v", m.Author, profile)
+				log.Printf("> Detected %v: %v", m.Author, profile)
 			}
 			if len(messages) <= 100 {
 				break
 			}
-			log.Printf("Waiting a bit to avoid doing shit ...")
+			log.Printf("> Waiting a bit to avoid doing a server overload...")
 			time.Sleep(10 * time.Second)
 		}
 	}
-	log.Printf("Full profile list loaded %d", len(c.profiles))
+	log.Printf("INFO: Full profile list loaded %d", len(c.profiles))
 	return len(c.profiles), nil
 }
 
