@@ -75,7 +75,12 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	// Load data from cache to prepare for command parsing.
 	channel, err := s.Channel(m.ChannelID)
 	if err != nil {
-		send(s, m.ChannelID, "Be-boooh-bo... unable to identify channel for this message")
+		send(s, m.ChannelID, "Oh, no. This should not happen. Unable to identify channel for this message: %v", err)
+		return
+	}
+	guild, err := s.Guild(channel.GuildID)
+	if err != nil {
+		send(s, m.ChannelID, "Oh, no. This should not happen. Unable to identify server for this message: %v", err)
 		return
 	}
 	cache, ok := guildCache[channel.GuildID]
@@ -87,7 +92,8 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 	log.Printf("INFO: parsing command on guild %s. Cached profiles ready")
 
-	log.Printf("RECV: #%v %v: %v", m.ChannelID, m.Author, m.Content)
+	log.Printf("RECV: [%v#%v] %v: %v", guild.Name, channel.Name, m.Author, m.Content)
+
 	if strings.HasPrefix(m.Content, "/help") {
 		send(s, m.ChannelID, helpMessage, m.Author.Mention())
 	} else if strings.HasPrefix(m.Content, "/mods") {

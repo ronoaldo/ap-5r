@@ -7,3 +7,4 @@ run: build
 
 deploy: build
 	gcloud docker -- push gcr.io/ronoaldoconsulting/discordbot:latest
+	gcloud compute ssh --command="/bin/bash /home/ronoaldo/reload.sh" chatbot
