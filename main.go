@@ -282,7 +282,15 @@ func onGuildJoin(s *discordgo.Session, event *discordgo.GuildCreate) {
 func ready(s *discordgo.Session, event *discordgo.Ready) {
 	version := os.Getenv("BOT_VERSION")
 	s.UpdateStatus(0, "Defeating the rebel scum at Arena")
-	s.UserUpdate("", "", fmt.Sprintf("RA-7 Protocol Droid (%s)", version), "", "")
+	s.UserUpdate("", "", fmt.Sprintf("RA-7 Protocol Droid (v%s)", version), "", "")
+	guilds, err := s.UserGuilds(100, "", "")
+	if err != nil {
+		log.Printf("ERROR: %v", err)
+		return
+	}
+	for _, g := range guilds {
+		log.Printf("+ Watching guild '%v' (%v)", g.Name, g.ID)
+	}
 }
 
 // logJSON takes a value and serializes it to the log stream  as a JSON
