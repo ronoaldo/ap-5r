@@ -69,7 +69,7 @@ I'll assume that all users shared their profile at the #swgoh-gg channel. Please
 
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	// Skip messages from self or non-command messages
-	if m.Author.ID == s.State.User.ID || !strings.HasPrefix(m.Content, "/") {
+	if m.Author.ID == s.State.User.ID {
 		return
 	}
 
@@ -87,18 +87,26 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	logger := &Logger{Guild: guild.Name}
 	cache, ok := guildCache[channel.GuildID]
 	if !ok {
+		//TODO: Lock cache for write?
 		logger.Printf("No cache for guild ID %s, initializing one", channel.GuildID)
 		// Initialize new cache and build guild profile cache
 		cache = NewCache(channel.GuildID, guild.Name)
 		cache.ReloadProfiles(s)
 		guildCache[channel.GuildID] = cache
 	}
+	// If message is from swgoh-gg, reload profiles. if not, discard
+	if channel.Name == "swgoh-gg" {
+		cache.ReloadProfiles(s)
+		return
+	}
+	if !strings.HasPrefix(m.Content, "/") {
+		return
+	}
 	logger.Printf("RECV: (#%v) %v: %v", channel.Name, m.Author, m.Content)
 	if strings.HasPrefix(m.Content, "/help") {
 		send(s, m.ChannelID, helpMessage, m.Author.Mention())
 	} else if strings.HasPrefix(m.Content, "/mods") {
 		args := strings.Fields(m.Content)[1:]
-		cache.ReloadProfiles(s)
 		profile, ok := cache.UserProfile(m.Author.String())
 		if !ok {
 			send(s, m.ChannelID, "Oh, interesintg. %s, it looks like you forgot to setup your profile at #swgoh-gg.", m.Author.Mention())
@@ -132,7 +140,6 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		send(s, m.ChannelID, "Reloaded profiles for the server. I found %d valid links.", count)
 	} else if strings.HasPrefix(m.Content, "/info") {
 		args := strings.Fields(m.Content)[1:]
-		cache.ReloadProfiles(s)
 		profile, ok := cache.UserProfile(m.Author.String())
 		if !ok {
 			send(s, m.ChannelID, "%s, not sure if I told you before, but you forgot to setup your profile at #swgoh-gg", m.Author.Mention())
