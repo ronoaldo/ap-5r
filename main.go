@@ -130,14 +130,6 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 				URL: renderUrl,
 			},
 		})
-	} else if strings.HasPrefix(m.Content, "/reload-profiles") {
-		send(s, m.ChannelID, "Copy that. I'll scan the channel #swgoh-gg again...")
-		count, err := cache.ReloadProfiles(s)
-		if err != nil {
-			send(s, m.ChannelID, "Oh no! We're doomed! (err=%v)", err)
-			return
-		}
-		send(s, m.ChannelID, "Reloaded profiles for the server. I found %d valid links.", count)
 	} else if strings.HasPrefix(m.Content, "/info") {
 		args := strings.Fields(m.Content)[1:]
 		profile, ok := cache.UserProfile(m.Author.String())
@@ -167,19 +159,14 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 				{"Critical Damage", fmt.Sprintf("%d%%", stats.CriticalDamage), true},
 			},
 		})
-	} else if strings.HasPrefix(m.Content, "/leave-guild") {
-		args := strings.Fields(m.Content)[1:]
-		if len(args) < 1 {
-			send(s, m.ChannelID, "Please inform the guild ID to leave")
+	} else if strings.HasPrefix(m.Content, "/reload-profiles") {
+		send(s, m.ChannelID, "Copy that. I'll scan the channel #swgoh-gg again...")
+		count, err := cache.ReloadProfiles(s)
+		if err != nil {
+			send(s, m.ChannelID, "Oh no! We're doomed! (err=%v)", err)
 			return
 		}
-		if err := s.GuildLeave(args[0]); err != nil {
-			send(s, m.ChannelID, "Error leaving guild %s", args[0])
-			logger.Errorf("Error leaving guild: %v", err)
-			return
-		}
-		send(s, m.ChannelID, "Left guild.")
-		listMyGuilds(s)
+		send(s, m.ChannelID, "Reloaded profiles for the server. I found %d valid links.", count)
 	} else if strings.HasPrefix(m.Content, "/server-info") {
 		args := strings.Fields(m.Content)[1:]
 		char := strings.TrimSpace(strings.Join(args, " "))
@@ -256,8 +243,6 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 		logger.Printf("INFO: %d profiles seems to be down. Need to improve error detection.", errCount)
 		send(s, m.ChannelID, msg.String())
-	} else if strings.HasPrefix(m.Content, "/guilds") {
-		send(s, m.ChannelID, listMyGuilds(s))
 	} else if strings.HasPrefix(m.Content, "/share-this-bot") {
 		msg := "AP-5R protocol droid is able to join other servers, but you need to follow this instructions:\n" +
 			"> Join the Bot Users Playground at https://discord.gg/4GJ8Ty2\n" +
@@ -265,6 +250,21 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			"> Follow instructions in the #info channel on that server\n"
 		send(s, m.ChannelID, msg)
 		return
+	} else if strings.HasPrefix(m.Content, "/guilds-i-am-running") {
+		send(s, m.ChannelID, listMyGuilds(s))
+	} else if strings.HasPrefix(m.Content, "/leave-guild") {
+		args := strings.Fields(m.Content)[1:]
+		if len(args) < 1 {
+			send(s, m.ChannelID, "Please inform the guild ID to leave")
+			return
+		}
+		if err := s.GuildLeave(args[0]); err != nil {
+			send(s, m.ChannelID, "Error leaving guild %s", args[0])
+			logger.Errorf("Error leaving guild: %v", err)
+			return
+		}
+		send(s, m.ChannelID, "Left guild.")
+		listMyGuilds(s)
 	}
 }
 
@@ -321,7 +321,7 @@ func listMyGuilds(s *discordgo.Session) string {
 		return err.Error()
 	}
 	for _, g := range guilds {
-		fmt.Fprintf(&buff, "+ Watching guild '%v' (%v)", g.Name, g.ID)
+		fmt.Fprintf(&buff, "+ Watching guild '%v' (%v)\n", g.Name, g.ID)
 		logger.Printf("+ Watching guild '%v' (%v)", g.Name, g.ID)
 	}
 	return buff.String()
