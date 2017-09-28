@@ -303,12 +303,16 @@ func onGuildJoin(s *discordgo.Session, event *discordgo.GuildCreate) {
 // the "ready" event from Discord.
 func ready(s *discordgo.Session, event *discordgo.Ready) {
 	version := os.Getenv("BOT_VERSION")
-	name := fmt.Sprintf("RA-7 Protocol Droid (%s)", version)
+	name := fmt.Sprintf("RA-7 Protocol Droid")
 	if *useDev {
-		name = "DEV " + name
+		name = name + " Beta"
 	}
-	s.UpdateStatus(0, "Defeating the rebel scum at Arena")
-	s.UserUpdate("", "", name, "", "")
+	s.UpdateStatus(0, "/help (Version: "+version+")")
+	if u, err := s.UserUpdate("", "", name, "", ""); err != nil {
+		logger.Errorf("Could not update profile: %v", err)
+	} else {
+		logger.Infof("Profile updated: %v", u)
+	}
 	listMyGuilds(s)
 }
 
