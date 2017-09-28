@@ -61,7 +61,8 @@ func main() {
 var helpMessage = `Hi %s, I'm AP-5R and I'm the Empire protocol droid unit that survivied the Death Star destruction. While I understand many languages, please use the following commands to contact me in this secure channel:
 
 **/mods** *character*: if you want me to deliver an image of your mods on a character
-**/info** *character*: if you want me to display your current character stats
+**/stats** *character*: if you want me to display your current character stats
+**/faction** *faction*: if you want me to display an image of your characters in a faction
 **/server-info** *character*: if you want me to do some number chrunch and display server-wide stats about a character
 **/reload-profiles**: this can be used to instruct me to do a reload of profiles. You don't need to, but just in case.
 
@@ -97,6 +98,9 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	// If message is from swgoh-gg, reload profiles. if not, discard
 	if channel.Name == "swgoh-gg" {
 		cache.ReloadProfiles(s)
+		if strings.HasPrefix(m.Content, "/") {
+			send(s, m.ChannelID, "Sorry, let's keep this channel for profile links only!")
+		}
 		return
 	}
 	if !strings.HasPrefix(m.Content, "/") {
@@ -120,9 +124,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		send(s, m.ChannelID, "Roger Roger! Let me check mods for '%s' on '%s' profile...", char, profile)
 		targetUrl := fmt.Sprintf("https://swgoh.gg/u/%s/collection/%s/", profile, swgohgg.CharSlug(swgohgg.CharName(char)))
 		querySelector := ".list-group.media-list.media-list-stream:nth-child(2)"
-		renderPageHost := "https://us-central1-ronoaldoconsulting.cloudfunctions.net"
-		renderUrl := fmt.Sprintf("%s/pageRender?url=%s&querySelector=%s&ts=%d", renderPageHost, targetUrl, querySelector, time.Now().UnixNano())
-		prefetch(logger, renderUrl)
+		renderUrl := renderImageAt(targetUrl, querySelector)
 		s.ChannelMessageSendEmbed(m.ChannelID, &discordgo.MessageEmbed{
 			Title:       fmt.Sprintf("%s's %s mods", profile, swgohgg.CharName(char)),
 			Description: "Here is the thing you asked " + m.Author.Mention(),
@@ -130,7 +132,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 				URL: renderUrl,
 			},
 		})
-	} else if strings.HasPrefix(m.Content, "/info") {
+	} else if strings.HasPrefix(m.Content, "/info") || strings.HasPrefix(m.Content, "/stats") {
 		args := strings.Fields(m.Content)[1:]
 		profile, ok := cache.UserProfile(m.Author.String())
 		if !ok {
@@ -151,12 +153,39 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		s.ChannelMessageSendEmbed(m.ChannelID, &discordgo.MessageEmbed{
 			Title: fmt.Sprintf("%s stats for %s", profile, swgohgg.CharName(char)),
 			Fields: []*discordgo.MessageEmbedField{
+				{"Basic", fmt.Sprintf("%d* G%d", stats.Stars, stats.GearLevel), true},
 				{"Health", strconv.FormatInt(stats.Health, 10), true},
 				{"Protection", strconv.FormatInt(stats.Protection, 10), true},
 				{"Speed", strconv.FormatInt(stats.Speed, 10), true},
 				{"Potency", fmt.Sprintf("%.02f%%", stats.Potency), true},
 				{"Tenacity", fmt.Sprintf("%.02f%%", stats.Tenacity), true},
 				{"Critical Damage", fmt.Sprintf("%d%%", stats.CriticalDamage), true},
+				{"Physical Damage", fmt.Sprintf("%d", stats.PhysicalDamage), true},
+				{"Special Damage", fmt.Sprintf("%d", stats.SpecialDamate), true},
+			},
+		})
+	} else if strings.HasPrefix(m.Content, "/faction") {
+		args := strings.Fields(m.Content)[1:]
+		profile, ok := cache.UserProfile(m.Author.String())
+		if !ok {
+			send(s, m.ChannelID, "%s, not sure if I told you before, but you forgot to setup your profile at #swgoh-gg", m.Author.Mention())
+			return
+		}
+		filter := strings.TrimSpace(strings.Join(args, " "))
+		if filter == "" {
+			send(s, m.ChannelID, "Please provide a faction! Try /faction Empire")
+			return
+		}
+		send(s, m.ChannelID, "Checking %s characters on %s faction ... This may take some time.", profile, filter)
+		filter = strings.Replace(strings.ToLower(filter), " ", "-", -1)
+		targetUrl := fmt.Sprintf("https://swgoh.gg/u/%s/collection/?f=%s", profile, filter)
+		querySelector := ".collection-char-list"
+		renderUrl := renderImageAt(targetUrl, querySelector)
+		s.ChannelMessageSendEmbed(m.ChannelID, &discordgo.MessageEmbed{
+			Title:       fmt.Sprintf("%s's characters from %s", profile, filter),
+			Description: "There we go " + m.Author.Mention(),
+			Image: &discordgo.MessageEmbedImage{
+				URL: renderUrl,
 			},
 		})
 	} else if strings.HasPrefix(m.Content, "/reload-profiles") {
@@ -193,6 +222,9 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			}
 		}
 		errCount := 0
+
+		var maxSpeed, avgSpeed, minSpeed int64
+		minSpeed = 99999
 		for _, profile := range guildProfiles {
 			// Fetch char info for each profile
 			gg.Profile(profile)
@@ -207,6 +239,13 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			}
 			stars[int(stats.Stars)]++
 			gear[int(stats.GearLevel)]++
+			if stats.Speed > maxSpeed {
+				maxSpeed = stats.Speed
+			}
+			if stats.Speed < minSpeed && stats.Speed > 0 {
+				minSpeed = stats.Speed
+			}
+			avgSpeed += stats.Speed
 			for _, skill := range stats.Skills {
 				for _, zeta := range zetas {
 					if strings.ToLower(skill.Name) == strings.ToLower(zeta.Name) && skill.Level == 8 {
@@ -217,7 +256,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			total++
 		}
 		var msg bytes.Buffer
-		fmt.Fprintf(&msg, "From %d confirmed players, %d have %s\n", len(guildProfiles), total, swgohgg.CharName(char))
+		fmt.Fprintf(&msg, "From %d %s players, %d have %s\n", len(guildProfiles), guild.Name, total, swgohgg.CharName(char))
 		fmt.Fprintf(&msg, "\n*Stars:*\n")
 		for i := 7; i >= 1; i-- {
 			count, ok := stars[i]
@@ -227,7 +266,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			fmt.Fprintf(&msg, "**%d** at %d stars\n", count, i)
 		}
 		fmt.Fprintf(&msg, "\n*Gear:*\n")
-		for i := 12; i > 1; i-- {
+		for i := 12; i >= 1; i-- {
 			count, ok := gear[i]
 			if !ok {
 				continue
@@ -239,8 +278,11 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			fmt.Fprintf(&msg, "**%d** zetas on *%s*\n", count, zeta)
 		}
 		if len(zetaCount) == 0 {
-			fmt.Fprintf(&msg, "No one was brave enough...")
+			fmt.Fprintf(&msg, "No one was brave enough! Or the caracter has no zetas. I'm not sure...")
 		}
+		fmt.Fprintf(&msg, "\n*Fun fact*\n")
+		fmt.Fprintf(&msg, "Average speed is %.02f, with the "+
+			"faster at %d and the slower at %d", float64(avgSpeed)/float64(total), maxSpeed, minSpeed)
 		logger.Printf("INFO: %d profiles seems to be down. Need to improve error detection.", errCount)
 		send(s, m.ChannelID, msg.String())
 	} else if strings.HasPrefix(m.Content, "/share-this-bot") {
@@ -329,6 +371,13 @@ func listMyGuilds(s *discordgo.Session) string {
 		logger.Printf("+ Watching guild '%v' (%v)", g.Name, g.ID)
 	}
 	return buff.String()
+}
+
+func renderImageAt(targetUrl, querySelector string) string {
+	renderPageHost := "https://us-central1-ronoaldoconsulting.cloudfunctions.net"
+	renderUrl := fmt.Sprintf("%s/pageRender?url=%s&querySelector=%s&ts=%d", renderPageHost, targetUrl, querySelector, time.Now().UnixNano())
+	prefetch(logger, renderUrl)
+	return renderUrl
 }
 
 // logJSON takes a value and serializes it to the log stream  as a JSON
