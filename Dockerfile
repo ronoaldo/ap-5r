@@ -7,6 +7,6 @@ USER discord
 
 ARG GIT_HASH
 ENV BOT_VERSION $GIT_HASH
-ADD discordbot /usr/bin/discordbot
+ADD ap-5r /usr/bin/ap-5r
 
-ENTRYPOINT /usr/bin/discordbot
+ENTRYPOINT /usr/bin/ap-5r

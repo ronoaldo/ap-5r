@@ -1,6 +1,4 @@
-# Setup
+# Links
 
-1. Create the app and add a bot user
-2. Follow the link bellow to add the bot to a server.
-
-	https://discordapp.com/oauth2/authorize?&client_id=YOUR_CLIENT_ID&scope=bot&permissions=0
+Dev Bot: https://discordapp.com/oauth2/authorize?client_id=360551342881636355&scope=bot&permissions=511040
+Prd Bot: https://discordapp.com/oauth2/authorize?client_id=355873395164053512&scope=bot&permissions=511040

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -25,6 +24,8 @@ var (
 	useDev    = flag.Bool("dev", asBool(os.Getenv("USE_DEV")), "Use development mode")
 
 	guildCache = make(map[string]*Cache)
+
+	logger = &Logger{Guild: "~MAIN~"}
 )
 
 // main runs the main loop of our bot application.
@@ -37,7 +38,7 @@ func main() {
 
 	dg, err := discordgo.New("Bot " + token)
 	if err != nil {
-		log.Fatal("Error initializing: " + err.Error())
+		logger.Fatalf("Error initializing: %v", err)
 	}
 
 	dg.AddHandler(ready)
@@ -45,7 +46,7 @@ func main() {
 
 	err = dg.Open()
 	if err != nil {
-		log.Fatal("Error opening: " + err.Error())
+		logger.Fatalf("Error opening websocket: %v", err)
 	}
 
 	// Wait here until CTRL-C or other term signal is received.
@@ -83,17 +84,16 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		send(s, m.ChannelID, "Oh, no. This should not happen. Unable to identify server for this message: %v", err)
 		return
 	}
+	logger := &Logger{Guild: guild.Name}
 	cache, ok := guildCache[channel.GuildID]
 	if !ok {
-		log.Printf("INFO: no cache for guild ID %s, initializing one", channel.GuildID)
+		logger.Printf("No cache for guild ID %s, initializing one", channel.GuildID)
 		// Initialize new cache and build guild profile cache
-		cache = NewCache(channel.GuildID)
+		cache = NewCache(channel.GuildID, guild.Name)
 		cache.ReloadProfiles(s)
+		guildCache[channel.GuildID] = cache
 	}
-	log.Printf("INFO: parsing command on guild %s. Cached profiles ready")
-
-	log.Printf("RECV: [%v#%v] %v: %v", guild.Name, channel.Name, m.Author, m.Content)
-
+	logger.Printf("RECV: (#%v) %v: %v", channel.Name, m.Author, m.Content)
 	if strings.HasPrefix(m.Content, "/help") {
 		send(s, m.ChannelID, helpMessage, m.Author.Mention())
 	} else if strings.HasPrefix(m.Content, "/mods") {
@@ -114,7 +114,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		querySelector := ".list-group.media-list.media-list-stream:nth-child(2)"
 		renderPageHost := "https://us-central1-ronoaldoconsulting.cloudfunctions.net"
 		renderUrl := fmt.Sprintf("%s/pageRender?url=%s&querySelector=%s&ts=%d", renderPageHost, targetUrl, querySelector, time.Now().UnixNano())
-		prefetch(renderUrl)
+		prefetch(logger, renderUrl)
 		s.ChannelMessageSendEmbed(m.ChannelID, &discordgo.MessageEmbed{
 			Title:       fmt.Sprintf("%s's %s mods", profile, swgohgg.CharName(char)),
 			Description: "Here is the thing you asked " + m.Author.Mention(),
@@ -160,6 +160,19 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 				{"Critical Damage", fmt.Sprintf("%d%%", stats.CriticalDamage), true},
 			},
 		})
+	} else if strings.HasPrefix(m.Content, "/leave-guild") {
+		args := strings.Fields(m.Content)[1:]
+		if len(args) < 1 {
+			send(s, m.ChannelID, "Please inform the guild ID to leave")
+			return
+		}
+		if err := s.GuildLeave(args[0]); err != nil {
+			send(s, m.ChannelID, "Error leaving guild %s", args[0])
+			logger.Errorf("Error leaving guild: %v", err)
+			return
+		}
+		send(s, m.ChannelID, "Left guild.")
+		listMyGuilds(s)
 	} else if strings.HasPrefix(m.Content, "/server-info") {
 		args := strings.Fields(m.Content)[1:]
 		char := strings.TrimSpace(strings.Join(args, " "))
@@ -194,7 +207,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			if err != nil {
 				// if 404, the player just does not have him active?
 				//send(s, m.ChannelID, "Oops, stopped at %d: %v", i, err.Error())
-				log.Printf("ERROR: %v", err)
+				logger.Errorf("Unable to fetch character %s for %s: %v", char, profile, err)
 				errCount++
 				continue
 			}
@@ -234,14 +247,16 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		if len(zetaCount) == 0 {
 			fmt.Fprintf(&msg, "No one was brave enough...")
 		}
-		log.Printf("INFO: %d profiles seems to be down. Need to improve error detection.", errCount)
+		logger.Printf("INFO: %d profiles seems to be down. Need to improve error detection.", errCount)
 		send(s, m.ChannelID, msg.String())
+	} else if strings.HasPrefix(m.Content, "/guilds") {
+		send(s, m.ChannelID, listMyGuilds(s))
 	} else if strings.HasPrefix(m.Content, "/share-this-bot") {
-		if *useDev {
-			send(s, m.ChannelID, "https://discordapp.com/oauth2/authorize?client_id=360551342881636355&scope=bot&permissions=511040")
-			return
-		}
-		send(s, m.ChannelID, "https://discordapp.com/oauth2/authorize?client_id=355873395164053512&scope=bot&permissions=511040")
+		msg := "AP-5R protocol droid is able to join other servers, but you need to follow this instructions:\n" +
+			"> Join the Bot Users Playground at https://discord.gg/4GJ8Ty2\n" +
+			"> Be a nice person\n" +
+			"> Follow instructions in the #info channel on that server\n"
+		send(s, m.ChannelID, msg)
 		return
 	}
 }
@@ -254,9 +269,9 @@ func send(s *discordgo.Session, channelID, message string, args ...interface{}) 
 
 // prefetch downloads and discards an URL. It is intended to fetch and to let server
 // cache data.
-func prefetch(url string) error {
+func prefetch(logger *Logger, url string) error {
 	resp, err := http.Head(url)
-	log.Printf("PREF: %s prefetched (resp %v)", url, resp)
+	logger.Printf("PREF: %s prefetched (resp %v)", url, resp)
 	if err != nil {
 		defer resp.Body.Close()
 	}
@@ -270,10 +285,10 @@ func onGuildJoin(s *discordgo.Session, event *discordgo.GuildCreate) {
 	if event.Guild.Unavailable {
 		return
 	}
-	log.Printf("JOIN: new guild: %v", event.Name)
-	log.Printf("Channels: ")
+	logger.Printf("JOIN: new guild: %v", event.Name)
+	logger.Printf("Channels: ")
 	for _, channel := range event.Guild.Channels {
-		log.Printf("> #%v: %v", channel.Name, channel.ID)
+		logger.Printf("> #%v: %v", channel.Name, channel.ID)
 	}
 }
 
@@ -281,16 +296,28 @@ func onGuildJoin(s *discordgo.Session, event *discordgo.GuildCreate) {
 // the "ready" event from Discord.
 func ready(s *discordgo.Session, event *discordgo.Ready) {
 	version := os.Getenv("BOT_VERSION")
+	name := fmt.Sprintf("RA-7 Protocol Droid (%s)", version)
+	if *useDev {
+		name = "DEV " + name
+	}
 	s.UpdateStatus(0, "Defeating the rebel scum at Arena")
-	s.UserUpdate("", "", fmt.Sprintf("RA-7 Protocol Droid (v%s)", version), "", "")
+	s.UserUpdate("", "", name, "", "")
+	listMyGuilds(s)
+}
+
+// listMyGuilds list all my guilds currently working on.
+func listMyGuilds(s *discordgo.Session) string {
+	var buff bytes.Buffer
 	guilds, err := s.UserGuilds(100, "", "")
 	if err != nil {
-		log.Printf("ERROR: %v", err)
-		return
+		logger.Errorf("Unable to list guilds: %v", err)
+		return err.Error()
 	}
 	for _, g := range guilds {
-		log.Printf("+ Watching guild '%v' (%v)", g.Name, g.ID)
+		fmt.Fprintf(&buff, "+ Watching guild '%v' (%v)", g.Name, g.ID)
+		logger.Printf("+ Watching guild '%v' (%v)", g.Name, g.ID)
 	}
+	return buff.String()
 }
 
 // logJSON takes a value and serializes it to the log stream  as a JSON
@@ -298,10 +325,10 @@ func ready(s *discordgo.Session, event *discordgo.Ready) {
 func logJSON(m string, v interface{}) {
 	b, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
-		log.Printf("ERR: Could not json.Marshal %v: %v", v, err)
+		logger.Errorf("Could not json.Marshal %v: %v", v, err)
 		return
 	}
-	log.Printf(" %s: %s", m, string(b))
+	logger.Printf(" %s: %s", m, string(b))
 }
 
 func asBool(src string) bool {
