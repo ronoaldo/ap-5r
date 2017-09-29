@@ -77,13 +77,15 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	// Load data from cache to prepare for command parsing.
 	channel, err := s.Channel(m.ChannelID)
-	if err != nil {
-		send(s, m.ChannelID, "Oh, no. This should not happen. Unable to identify channel for this message: %v", err)
+	if err != nil && strings.HasPrefix("/") {
+		logger.Errorf("Error loading channel: %v", err)
+		send(s, m.ChannelID, "Oh, no. This should not happen. Unable to identify channel for this message!")
 		return
 	}
 	guild, err := s.Guild(channel.GuildID)
-	if err != nil {
-		send(s, m.ChannelID, "Oh, no. This should not happen. Unable to identify server for this message: %v", err)
+	if err != nil && strings.HasPrefix("/") {
+		logger.Errorf("Error loading channel: %v", err)
+		send(s, m.ChannelID, "Oh, no. This should not happen. Unable to identify server for this message!")
 		return
 	}
 	logger := &Logger{Guild: guild.Name}
