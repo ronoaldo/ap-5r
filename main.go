@@ -63,7 +63,7 @@ var helpMessage = `Hi %s, I'm AP-5R and I'm the Empire protocol droid unit that 
 
 **/mods** *character*: if you want me to deliver an image of your mods on a character
 **/stats** *character*: if you want me to display your current character stats
-**/faction** *faction*: if you want me to display an image of your characters in a faction
+**/faction** *faction*: if you want me to display an image of your characters in a faction (*USE SINGULAR* not plural: droid and not droids)
 **/server-info** *character*: if you want me to do some number chrunch and display server-wide stats about a character
 **/reload-profiles**: this can be used to instruct me to do a reload of profiles. You don't need to, but just in case.
 
@@ -125,9 +125,9 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		send(s, m.ChannelID, "Roger Roger! Let me check mods for '%s' on '%s' profile...", char, profile)
 		targetUrl := fmt.Sprintf("https://swgoh.gg/u/%s/collection/%s/", profile, swgohgg.CharSlug(swgohgg.CharName(char)))
 		querySelector := ".list-group.media-list.media-list-stream:nth-child(2)"
-		renderUrl := renderImageAt(targetUrl, querySelector)
+		renderUrl := renderImageAt(logger, targetUrl, querySelector)
 		s.ChannelMessageSendEmbed(m.ChannelID, &discordgo.MessageEmbed{
-			Title:       fmt.Sprintf("%s's %s mods", profile, swgohgg.CharName(char)),
+			Title:       fmt.Sprintf("%s's %s mods", unquote(profile), swgohgg.CharName(char)),
 			Description: "Here is the thing you asked " + m.Author.Mention(),
 			Image: &discordgo.MessageEmbedImage{
 				URL: renderUrl,
@@ -152,7 +152,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			return
 		}
 		s.ChannelMessageSendEmbed(m.ChannelID, &discordgo.MessageEmbed{
-			Title: fmt.Sprintf("%s stats for %s", profile, swgohgg.CharName(char)),
+			Title: fmt.Sprintf("%s stats for %s", unquote(profile), swgohgg.CharName(char)),
 			Fields: []*discordgo.MessageEmbedField{
 				{"Basic", fmt.Sprintf("%d* G%d", stats.Stars, stats.GearLevel), true},
 				{"Health", strconv.FormatInt(stats.Health, 10), true},
@@ -177,13 +177,16 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			send(s, m.ChannelID, "Please provide a faction! Try /faction Empire")
 			return
 		}
-		send(s, m.ChannelID, "Checking %s characters on %s faction ... This may take some time.", profile, filter)
+		send(s, m.ChannelID, "Checking %s characters on %s faction ... This may take some time.", unquote(profile), filter)
 		filter = strings.Replace(strings.ToLower(filter), " ", "-", -1)
+		if filter == "rebel-scum" || filter == "terrorists" {
+			filter = "rebel"
+		}
 		targetUrl := fmt.Sprintf("https://swgoh.gg/u/%s/collection/?f=%s", profile, filter)
 		querySelector := ".collection-char-list"
-		renderUrl := renderImageAt(targetUrl, querySelector)
+		renderUrl := renderImageAt(logger, targetUrl, querySelector)
 		s.ChannelMessageSendEmbed(m.ChannelID, &discordgo.MessageEmbed{
-			Title:       fmt.Sprintf("%s's characters from %s", profile, filter),
+			Title:       fmt.Sprintf("%s's characters from %s", unquote(profile), filter),
 			Description: "There we go " + m.Author.Mention(),
 			Image: &discordgo.MessageEmbedImage{
 				URL: renderUrl,
@@ -294,7 +297,11 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		send(s, m.ChannelID, msg)
 		return
 	} else if strings.HasPrefix(m.Content, "/guilds-i-am-running") {
-		send(s, m.ChannelID, listMyGuilds(s))
+		desc, quant := listMyGuilds(s)
+		send(s, m.ChannelID, "Running on %d guilds:", quant)
+		if err := send(s, m.ChannelID, desc); err != nil {
+			logger.Errorf("Unable to send message %v", err)
+		}
 	} else if strings.HasPrefix(m.Content, "/leave-guild") {
 		args := strings.Fields(m.Content)[1:]
 		if len(args) < 1 {
@@ -360,21 +367,23 @@ func ready(s *discordgo.Session, event *discordgo.Ready) {
 }
 
 // listMyGuilds list all my guilds currently working on.
-func listMyGuilds(s *discordgo.Session) string {
+func listMyGuilds(s *discordgo.Session) (string, int) {
 	var buff bytes.Buffer
 	guilds, err := s.UserGuilds(100, "", "")
 	if err != nil {
 		logger.Errorf("Unable to list guilds: %v", err)
-		return err.Error()
+		return err.Error(), 0
 	}
+	count := 0
 	for _, g := range guilds {
 		fmt.Fprintf(&buff, "+ Watching guild '%v' (%v)\n", g.Name, g.ID)
 		logger.Printf("+ Watching guild '%v' (%v)", g.Name, g.ID)
+		count++
 	}
-	return buff.String()
+	return buff.String(), count
 }
 
-func renderImageAt(targetUrl, querySelector string) string {
+func renderImageAt(logger *Logger, targetUrl, querySelector string) string {
 	renderPageHost := "https://us-central1-ronoaldoconsulting.cloudfunctions.net"
 	renderUrl := fmt.Sprintf("%s/pageRender?url=%s&querySelector=%s&ts=%d",
 		renderPageHost, url.QueryEscape(targetUrl), querySelector, time.Now().UnixNano())
@@ -399,4 +408,11 @@ func asBool(src string) bool {
 		return false
 	}
 	return res
+}
+
+func unquote(src string) string {
+	if dst, err := url.QueryUnescape(src); err == nil {
+		return dst
+	}
+	return src
 }

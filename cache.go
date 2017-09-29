@@ -1,7 +1,9 @@
 package main
 
 import (
+	"net/url"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -97,6 +99,12 @@ func (c *Cache) ReloadProfiles(s *discordgo.Session) (int, error) {
 				profile := extractProfile(m.Content)
 				if profile == "" {
 					continue
+				}
+				// Let's try to fix some weird names, right?
+				aux, err := url.QueryUnescape(profile)
+				if err == nil {
+					// We could decode, so let's encode again in a better way.
+					profile = strings.Replace(url.QueryEscape(aux), "+", "%20", -1)
 				}
 				c.SetUserProfile(m.Author.String(), profile)
 				c.logger.Printf("> Detected %v: %v", m.Author, profile)
