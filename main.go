@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"strconv"
@@ -278,7 +279,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			fmt.Fprintf(&msg, "**%d** zetas on *%s*\n", count, zeta)
 		}
 		if len(zetaCount) == 0 {
-			fmt.Fprintf(&msg, "No one was brave enough! Or the caracter has no zetas. I'm not sure...")
+			fmt.Fprintf(&msg, "No one was brave enough! Or the caracter has no zetas. I'm not sure...\n")
 		}
 		fmt.Fprintf(&msg, "\n*Fun fact*\n")
 		fmt.Fprintf(&msg, "Average speed is %.02f, with the "+
@@ -375,7 +376,8 @@ func listMyGuilds(s *discordgo.Session) string {
 
 func renderImageAt(targetUrl, querySelector string) string {
 	renderPageHost := "https://us-central1-ronoaldoconsulting.cloudfunctions.net"
-	renderUrl := fmt.Sprintf("%s/pageRender?url=%s&querySelector=%s&ts=%d", renderPageHost, targetUrl, querySelector, time.Now().UnixNano())
+	renderUrl := fmt.Sprintf("%s/pageRender?url=%s&querySelector=%s&ts=%d",
+		renderPageHost, url.QueryEscape(targetUrl), querySelector, time.Now().UnixNano())
 	prefetch(logger, renderUrl)
 	return renderUrl
 }
