@@ -25,6 +25,7 @@ var (
 	useDev    = flag.Bool("dev", asBool(os.Getenv("USE_DEV")), "Use development mode")
 
 	guildCache = make(map[string]*Cache)
+	apiCache   = NewAPICache()
 
 	logger = &Logger{Guild: "~MAIN~"}
 )
@@ -76,13 +77,13 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	// Load data from cache to prepare for command parsing.
-	channel, err := s.Channel(m.ChannelID)
+	channel, err := apiCache.GetChannel(s, m.ChannelID)
 	if err != nil && strings.HasPrefix(m.Content, "/") {
 		logger.Errorf("Error loading channel: %v", err)
 		send(s, m.ChannelID, "Oh, no. This should not happen. Unable to identify channel for this message!")
 		return
 	}
-	guild, err := s.Guild(channel.GuildID)
+	guild, err := apiCache.GetGuild(s, channel.GuildID)
 	if err != nil && strings.HasPrefix(m.Content, "/") {
 		logger.Errorf("Error loading channel: %v", err)
 		send(s, m.ChannelID, "Oh, no. This should not happen. Unable to identify server for this message!")
@@ -288,7 +289,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 		fmt.Fprintf(&msg, "\n*Fun fact*\n")
 		fmt.Fprintf(&msg, "Average speed is %.02f, with the "+
-			"faster at %d and the slower at %d", float64(avgSpeed)/float64(total), maxSpeed, minSpeed)
+			"fastest at %d and the slowest at %d", float64(avgSpeed)/float64(total), maxSpeed, minSpeed)
 		logger.Printf("INFO: %d profiles seems to be down. Need to improve error detection.", errCount)
 		send(s, m.ChannelID, msg.String())
 	} else if strings.HasPrefix(m.Content, "/share-this-bot") {

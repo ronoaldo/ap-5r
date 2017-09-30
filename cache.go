@@ -136,3 +136,46 @@ func extractProfile(src string) string {
 	}
 	return results[0][1]
 }
+
+// APICache holds some in-memory cached data.
+type APICache struct {
+	channels   map[string]*discordgo.Channel
+	channelsMu sync.Mutex
+
+	guilds   map[string]*discordgo.Guild
+	guildsMu sync.Mutex
+}
+
+// NewAPICache creates a new API Cache in-memory.
+func NewAPICache() *APICache {
+	return &APICache{
+		channels: make(map[string]*discordgo.Channel),
+		guilds:   make(map[string]*discordgo.Guild),
+	}
+}
+
+func (a *APICache) GetGuild(s *discordgo.Session, guildID string) (*discordgo.Guild, error) {
+	a.guildsMu.Lock()
+	defer a.guildsMu.Unlock()
+	if g, ok := a.guilds[guildID]; ok {
+		return g, nil
+	}
+	g, err := s.Guild(guildID)
+	if err == nil {
+		a.guilds[guildID] = g
+	}
+	return g, nil
+}
+
+func (a *APICache) GetChannel(s *discordgo.Session, channelID string) (*discordgo.Channel, error) {
+	a.channelsMu.Lock()
+	defer a.channelsMu.Unlock()
+	if c, ok := a.channels[channelID]; ok {
+		return c, nil
+	}
+	c, err := s.Channel(channelID)
+	if err == nil {
+		a.channels[channelID] = c
+	}
+	return c, nil
+}
