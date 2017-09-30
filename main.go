@@ -125,13 +125,14 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			send(s, m.ChannelID, "%s, use this command with a character name. Try this: /mods tfp", m.Author.Mention())
 			return
 		}
-		send(s, m.ChannelID, "Roger Roger! Let me check mods for '%s' on '%s' profile...", char, profile)
+		sent, _ := send(s, m.ChannelID, "This might take a while. Let me check mods for '%s' on '%s' profile...", char, profile)
+		defer cleanup(s, sent)
 		targetUrl := fmt.Sprintf("https://swgoh.gg/u/%s/collection/%s/", profile, swgohgg.CharSlug(swgohgg.CharName(char)))
 		querySelector := ".list-group.media-list.media-list-stream:nth-child(2)"
-		renderUrl := renderImageAt(logger, targetUrl, querySelector)
+		renderUrl := renderImageAt(logger, targetUrl, querySelector, "", "mobile")
 		s.ChannelMessageSendEmbed(m.ChannelID, &discordgo.MessageEmbed{
 			Title:       fmt.Sprintf("%s's %s mods", unquote(profile), swgohgg.CharName(char)),
-			Description: "Here is the thing you asked " + m.Author.Mention(),
+			Description: "Here is the thing you asked " + m.Author.Username,
 			Image: &discordgo.MessageEmbedImage{
 				URL: renderUrl,
 			},
@@ -149,6 +150,14 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			return
 		}
 		c := swgohgg.NewClient(profile)
+		collection, err := c.Collection()
+		if err != nil {
+			send(s, m.ChannelID, "Oops, that did not worked as expected: %v. I hope nothing is broken ....", err.Error())
+			return
+		}
+		if !collection.Contains(swgohgg.CharName(char)) {
+			send(s, m.ChannelID, "%s, looks like you don't have %s activated yet, do you?", m.Author.Mention(), char)
+		}
 		stats, err := c.CharacterStats(char)
 		if err != nil {
 			send(s, m.ChannelID, "Oops, that did not worked as expected: %v. I hope nothing is broken ....", err.Error())
@@ -175,22 +184,28 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			send(s, m.ChannelID, "%s, not sure if I told you before, but you forgot to setup your profile at #swgoh-gg", m.Author.Mention())
 			return
 		}
-		filter := strings.TrimSpace(strings.Join(args, " "))
+		filter := strings.ToLower(strings.TrimSpace(strings.Join(args, " ")))
 		if filter == "" {
 			send(s, m.ChannelID, "Please provide a faction! Try /faction Empire")
 			return
 		}
-		send(s, m.ChannelID, "Checking %s characters on %s faction ... This may take some time.", unquote(profile), filter)
+		filter = strings.Trim(filter, "s")
+		displayName := filter
+		if displayName == "rebel" {
+			displayName = "rebel scum"
+		}
+		sent, _ := send(s, m.ChannelID, "Checking %s characters on %s faction ... This may take some time.", unquote(profile), displayName)
+		defer cleanup(s, sent)
 		filter = strings.Replace(strings.ToLower(filter), " ", "-", -1)
 		if filter == "rebel-scum" || filter == "terrorists" {
 			filter = "rebel"
 		}
 		targetUrl := fmt.Sprintf("https://swgoh.gg/u/%s/collection/?f=%s", profile, filter)
 		querySelector := ".collection-char-list"
-		renderUrl := renderImageAt(logger, targetUrl, querySelector)
+		renderUrl := renderImageAt(logger, targetUrl, querySelector, "", "desktop")
 		s.ChannelMessageSendEmbed(m.ChannelID, &discordgo.MessageEmbed{
 			Title:       fmt.Sprintf("%s's characters from %s", unquote(profile), filter),
-			Description: "There we go " + m.Author.Mention(),
+			Description: "There we go " + m.Author.Username,
 			Image: &discordgo.MessageEmbedImage{
 				URL: renderUrl,
 			},
@@ -302,7 +317,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	} else if strings.HasPrefix(m.Content, "/guilds-i-am-running") {
 		desc, quant := listMyGuilds(s)
 		send(s, m.ChannelID, "Running on %d guilds:", quant)
-		if err := send(s, m.ChannelID, desc); err != nil {
+		if _, err := send(s, m.ChannelID, desc); err != nil {
 			logger.Errorf("Unable to send message %v", err)
 		}
 	} else if strings.HasPrefix(m.Content, "/leave-guild") {
@@ -322,9 +337,20 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 }
 
 // send is a helper function that formats a text message and send to the target channel.
-func send(s *discordgo.Session, channelID, message string, args ...interface{}) error {
-	_, err := s.ChannelMessageSend(channelID, fmt.Sprintf(message, args...))
-	return err
+func send(s *discordgo.Session, channelID, message string, args ...interface{}) (*discordgo.Message, error) {
+	m, err := s.ChannelMessageSend(channelID, fmt.Sprintf(message, args...))
+	return m, err
+}
+
+func cleanup(s *discordgo.Session, m *discordgo.Message) {
+	if s == nil || m == nil {
+		logger.Infof("Skipped message clean up (%v, %v)", s, m)
+		return
+	}
+	err := s.ChannelMessageDelete(m.ChannelID, m.ID)
+	if err != nil {
+		logger.Errorf("Unable to delete message#%v: %v", m.ID, err)
+	}
 }
 
 // prefetch downloads and discards an URL. It is intended to fetch and to let server
@@ -386,12 +412,16 @@ func listMyGuilds(s *discordgo.Session) (string, int) {
 	return buff.String(), count
 }
 
-func renderImageAt(logger *Logger, targetUrl, querySelector string) string {
+func renderImageAt(logger *Logger, targetUrl, querySelector, click, size string) string {
 	renderPageHost := "https://us-central1-ronoaldoconsulting.cloudfunctions.net"
-	renderUrl := fmt.Sprintf("%s/pageRender?url=%s&querySelector=%s&ts=%d",
-		renderPageHost, url.QueryEscape(targetUrl), querySelector, time.Now().UnixNano())
+	renderUrl := fmt.Sprintf("%s/pageRender?url=%s&querySelector=%s&click=%s&size=%s&ts=%d",
+		renderPageHost, esc(targetUrl), querySelector, click, size, time.Now().UnixNano())
 	prefetch(logger, renderUrl)
 	return renderUrl
+}
+
+func esc(src string) string {
+	return url.QueryEscape(src)
 }
 
 // logJSON takes a value and serializes it to the log stream  as a JSON
