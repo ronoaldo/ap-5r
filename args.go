@@ -16,7 +16,7 @@ type Args struct {
 var (
 	profileArgRe = regexp.MustCompile("\\[.*\\]")
 	flagsRe      = regexp.MustCompile("\\+[a-z0-9]+")
-	mentionRe    = regexp.MustCompile("\\<@[0-9]+\\>")
+	mentionRe    = regexp.MustCompile("\\<@!?-?[0-9]+\\>")
 )
 
 func ParseArgs(line string) *Args {
