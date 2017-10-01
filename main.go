@@ -129,7 +129,8 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		defer cleanup(s, sent)
 		targetUrl := fmt.Sprintf("https://swgoh.gg/u/%s/collection/%s/", profile, swgohgg.CharSlug(swgohgg.CharName(char)))
 		querySelector := ".list-group.media-list.media-list-stream:nth-child(2)"
-		renderUrl := renderImageAt(logger, targetUrl, querySelector, "", "desktop")
+		clickSelector := ".icon.icon-chevron-down.pull-left"
+		renderUrl := renderImageAt(logger, targetUrl, querySelector, clickSelector, "desktop")
 		s.ChannelMessageSendEmbed(m.ChannelID, &discordgo.MessageEmbed{
 			Title:       fmt.Sprintf("%s's %s mods", unquote(profile), swgohgg.CharName(char)),
 			Description: "Here is the thing you asked " + m.Author.Username,
