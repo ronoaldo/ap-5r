@@ -34,6 +34,13 @@ func (c *Cache) SetUserProfile(user, profile string) {
 	c.profiles[user] = profile
 }
 
+func (c *Cache) UserProfileIfEmpty(profile, user string) (string, bool) {
+	if profile != "" {
+		return profile, true
+	}
+	return c.UserProfile(user)
+}
+
 func (c *Cache) UserProfile(user string) (string, bool) {
 	profile, ok := c.profiles[user]
 	return profile, ok

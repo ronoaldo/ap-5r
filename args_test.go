@@ -12,8 +12,12 @@ func TestParseArgs(t *testing.T) {
 			out: Args{Command: "/mods", Name: "tfp"}},
 		{in: "/mods tie fighter pilot +small",
 			out: Args{Command: "/mods", Name: "tie fighter pilot", Flags: []string{"+small"}}},
-		{in: "/mods tie fighter pilot @ronoaldo",
+		{in: "/mods tie fighter pilot [ronoaldo]",
 			out: Args{Command: "/mods", Name: "tie fighter pilot", Profile: "ronoaldo"}},
+		{in: "/mods tie fighter pilot [my bad username]",
+			out: Args{Command: "/mods", Name: "tie fighter pilot", Profile: "my bad username"}},
+		{in: "/mods tie fighter pilot [my%20bad%20username]",
+			out: Args{Command: "/mods", Name: "tie fighter pilot", Profile: "my%20bad%20username"}},
 	}
 
 	for i := range testCases {

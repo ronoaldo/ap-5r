@@ -1,6 +1,9 @@
 package main
 
-import "strings"
+import (
+	"regexp"
+	"strings"
+)
 
 type Args struct {
 	Command string
@@ -10,27 +13,34 @@ type Args struct {
 	Line    string
 }
 
+var (
+	profileArgRe = regexp.MustCompile("\\[.*\\]")
+	flagsRe      = regexp.MustCompile("\\+[a-z0-9]+")
+)
+
 func ParseArgs(line string) *Args {
-	fields := strings.Fields(line)
+	// Extract metadata first
+	profile := profileArgRe.FindAllString(line, -1)
+	flags := flagsRe.FindAllString(line, -1)
+	// Clean up original args
+	line = profileArgRe.ReplaceAllString(line, "")
+	line = flagsRe.ReplaceAllString(line, "")
+
 	opts := Args{Line: line}
+	if len(profile) > 0 {
+		opts.Profile = strings.Trim(profile[0], "[]")
+	}
+	if len(flags) > 0 {
+		opts.Flags = flags
+	}
+
+	// Parse remaining as cmd, name
+	fields := strings.Fields(line)
 	if len(fields) == 0 {
 		return &opts
 	}
 	opts.Command = fields[0]
-	// Parse fields from user to detect special syntax
-	aux := make([]string, 0)
-	for _, f := range fields[1:] {
-		if strings.HasPrefix(f, "@") {
-			// profile
-			opts.Profile = strings.Replace(f, "@", "", 1)
-		} else if strings.HasPrefix(f, "+") {
-			// flag
-			opts.Flags = append(opts.Flags, f)
-		} else {
-			aux = append(aux, f)
-		}
-	}
-	opts.Name = strings.Join(aux, " ")
+	opts.Name = strings.Join(fields[1:], " ")
 	return &opts
 }
 
