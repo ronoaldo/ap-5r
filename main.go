@@ -204,7 +204,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		querySelector := ".collection-char-list"
 		renderUrl := renderImageAt(logger, targetUrl, querySelector, "", "desktop")
 		s.ChannelMessageSendEmbed(m.ChannelID, &discordgo.MessageEmbed{
-			Title:       fmt.Sprintf("%s's characters from %s", unquote(profile), filter),
+			Title:       fmt.Sprintf("%s's characters tagged '%s'", unquote(profile), displayName),
 			Description: "There we go " + m.Author.Username,
 			Image: &discordgo.MessageEmbedImage{
 				URL: renderUrl,
