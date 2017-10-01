@@ -371,7 +371,7 @@ func askForProfile(s *discordgo.Session, m *discordgo.MessageCreate, cmd string)
 	msg := "%s, not sure if I told you before, but you can setup your" +
 		" profile at #swgoh-gg so I know where to look at. Otherwise, tell" +
 		" me a profile name too, like in /%s tfp [ronoaldo]"
-	send(s, m.ChannelID, msg, cmd, m.Author.Mention())
+	send(s, m.ChannelID, msg, m.Author.Mention(), cmd)
 }
 
 // prefetch downloads and discards an URL. It is intended to fetch and to let server
