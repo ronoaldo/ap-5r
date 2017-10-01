@@ -217,7 +217,6 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			Content: "There we go " + m.Author.Mention(),
 			Embed: &discordgo.MessageEmbed{
 				Title: fmt.Sprintf("%s's characters tagged '%s'", unquote(profile), displayName),
-				URL:   targetUrl,
 				Image: &discordgo.MessageEmbedImage{
 					URL: renderUrl,
 				},
