@@ -113,8 +113,8 @@ func (c *Cache) ReloadProfiles(s *discordgo.Session) (int, error) {
 					// We could decode, so let's encode again in a better way.
 					profile = strings.Replace(url.QueryEscape(aux), "+", "%20", -1)
 				}
-				c.SetUserProfile(m.Author.String(), profile)
-				c.logger.Printf("> Detected %v: %v", m.Author, profile)
+				c.SetUserProfile(m.Author.ID, profile)
+				c.logger.Printf("> Detected %v[%v]: %v", m.Author, m.Author.ID, profile)
 			}
 			if len(messages) <= 100 {
 				break

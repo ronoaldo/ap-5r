@@ -16,6 +16,7 @@ type Args struct {
 var (
 	profileArgRe = regexp.MustCompile("\\[.*\\]")
 	flagsRe      = regexp.MustCompile("\\+[a-z0-9]+")
+	mentionRe    = regexp.MustCompile("\\<@[0-9]+\\>")
 )
 
 func ParseArgs(line string) *Args {
@@ -25,6 +26,7 @@ func ParseArgs(line string) *Args {
 	// Clean up original args
 	line = profileArgRe.ReplaceAllString(line, "")
 	line = flagsRe.ReplaceAllString(line, "")
+	line = mentionRe.ReplaceAllString(line, "")
 
 	opts := Args{Line: line}
 	if len(profile) > 0 {

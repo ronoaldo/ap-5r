@@ -115,7 +115,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		send(s, m.ChannelID, helpMessage, m.Author.Mention())
 	} else if strings.HasPrefix(m.Content, "/mods") {
 		args := ParseArgs(m.Content)
-		profile, ok := cache.UserProfileIfEmpty(args.Profile, m.Author.String())
+		profile, ok := cache.UserProfileIfEmpty(args.Profile, m.ID)
 		if !ok {
 			askForProfile(s, m, "stats")
 			return
@@ -146,7 +146,12 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		})
 	} else if strings.HasPrefix(m.Content, "/info") || strings.HasPrefix(m.Content, "/stats") {
 		args := ParseArgs(m.Content)
-		profile, ok := cache.UserProfileIfEmpty(args.Profile, m.Author.String())
+		profile, ok := cache.UserProfileIfEmpty(args.Profile, m.Author.ID)
+		if len(m.Mentions) > 0 {
+			logger.Infof("Using mentioned profile %v", m.Mentions[0])
+			// Lookup mentioned profile
+			profile, ok = cache.UserProfileIfEmpty(args.Profile, m.Mentions[0].ID)
+		}
 		if !ok {
 			askForProfile(s, m, "stats")
 			return
@@ -189,7 +194,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		})
 	} else if strings.HasPrefix(m.Content, "/faction") {
 		args := ParseArgs(m.Content)
-		profile, ok := cache.UserProfileIfEmpty(args.Profile, m.Author.String())
+		profile, ok := cache.UserProfileIfEmpty(args.Profile, m.ID)
 		if !ok {
 			send(s, m.ChannelID, "%s, not sure if I told you before, but you forgot to setup your profile at #swgoh-gg", m.Author.Mention())
 			return
