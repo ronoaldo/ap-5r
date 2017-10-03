@@ -214,7 +214,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			send(s, m.ChannelID, "Please provide a faction! Try /faction Empire")
 			return
 		}
-		filter = strings.Trim(filter, "s")
+		filter = strings.TrimSuffix(filter, "s")
 		displayName := filter
 		if displayName == "rebel" {
 			displayName = "rebel scum"

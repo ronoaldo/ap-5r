@@ -61,67 +61,68 @@ func (c *Cache) RemoveAllProfiles() {
 }
 
 func (c *Cache) ReloadProfiles(s *discordgo.Session) (int, error) {
-	guilds, err := s.UserGuilds(0, "", "")
+	guild, err := s.Guild(c.guildID)
 	if err != nil {
 		return 0, err
 	}
 	c.RemoveAllProfiles()
+	c.logger.Printf("> Reloading profiles for guild %s#%s", guild.Name, guild.ID)
 
-	for _, guild := range guilds {
-		if guild.ID != c.guildID {
-			continue
+	c.logger.Printf("> Looking up #swgoh-gg channel for guild %s", guild.Name)
+	channels, err := s.GuildChannels(guild.ID)
+	if err != nil {
+		c.logger.Errorf("Loading channels. Skipping this guild (%v)", err)
+		return 0, err
+	}
+	chanID := ""
+	for _, ch := range channels {
+		if ch.Name == "swgoh-gg" {
+			chanID = ch.ID
+			break
 		}
-		c.logger.Printf("> Looking up #swgoh-gg channel for guild %s", guild.Name)
-		channels, err := s.GuildChannels(guild.ID)
+	}
+	if chanID == "" {
+		c.logger.Errorf("No channel ID found with name #swgoh-gg. Skipping this guild.")
+		return 0, err
+	}
+	pageSize := 100
+	first := ""
+	last := ""
+	for {
+		c.logger.Printf("Loading messages, last  '%s'", last)
+		messages, err := s.ChannelMessages(chanID, pageSize, last, "", "")
 		if err != nil {
-			c.logger.Errorf("Loading channels. Skipping this guild (%v)", err)
-			continue
+			send(s, chanID, "Oh, wait. I could not read messages on %v's #swgoh-gg channel."+
+				" Try to remove me and add me again to the server, and make sure I have all"+
+				" requested permissions! If your #swgoh-gg channel is restricted by a tag/role,"+
+				" I need that tag/role too.", guild.Name)
+			c.logger.Errorf("Loading messages from #swgoh-gg channel: %v", err)
+			return 0, err
 		}
-		chanID := ""
-		for _, ch := range channels {
-			if ch.Name == "swgoh-gg" {
-				chanID = ch.ID
-				break
+		c.logger.Printf("> Currently with %d", len(messages))
+		for _, m := range messages {
+			if first == "" {
+				first = m.ID + ": " + m.Content
 			}
-		}
-		if chanID == "" {
-			c.logger.Errorf("No channel ID found with name #swgoh-gg. Skipping this guild.")
-			continue
-		}
-		after := ""
-		for {
-			c.logger.Printf("Loading messages after id '%s'", after)
-			messages, err := s.ChannelMessages(chanID, 100, "", after, "")
-			if err != nil {
-				send(s, chanID, "Oh, wait. I could not read messages on %v's #swgoh-gg channel."+
-					" Try to remove me and add me again to the server, and make sure I have all"+
-					" requested permissions! If your #swgoh-gg channel is restricted by a tag/role,"+
-					" I need that tag/role too.", guild.Name)
-				c.logger.Errorf("Loading messages from #swgoh-gg channel: %v", err)
+			last = m.ID
+			profile := extractProfile(m.Content)
+			if profile == "" {
 				continue
 			}
-			c.logger.Printf("> Currently with %d", len(messages))
-			for _, m := range messages {
-				after = m.ID
-				profile := extractProfile(m.Content)
-				if profile == "" {
-					continue
-				}
-				// Let's try to fix some weird names, right?
-				aux, err := url.QueryUnescape(profile)
-				if err == nil {
-					// We could decode, so let's encode again in a better way.
-					profile = strings.Replace(url.QueryEscape(aux), "+", "%20", -1)
-				}
-				c.SetUserProfile(m.Author.ID, profile)
-				c.logger.Printf("> Detected %v[%v]: %v", m.Author, m.Author.ID, profile)
+			// Let's try to fix some weird names, right?
+			aux, err := url.QueryUnescape(profile)
+			if err == nil {
+				// We could decode, so let's encode again in a better way.
+				profile = strings.Replace(url.QueryEscape(aux), "+", "%20", -1)
 			}
-			if len(messages) <= 100 {
-				break
-			}
-			c.logger.Printf("> Waiting a bit to avoid doing a server overload...")
-			time.Sleep(10 * time.Second)
+			c.SetUserProfile(m.Author.ID, profile)
+			c.logger.Printf("> Detected %v[%v]: %v", m.Author, m.Author.ID, profile)
 		}
+		if len(messages) < pageSize {
+			break
+		}
+		c.logger.Printf("> Waiting a bit to avoid doing a server overload...")
+		time.Sleep(1 * time.Second)
 	}
 	c.logger.Printf("Full profile list loaded %d", len(c.profiles))
 	return len(c.profiles), nil
@@ -168,10 +169,10 @@ func (a *APICache) GetGuild(s *discordgo.Session, guildID string) (*discordgo.Gu
 		return g, nil
 	}
 	g, err := s.Guild(guildID)
-	if err == nil {
+	if g != nil {
 		a.guilds[guildID] = g
 	}
-	return g, nil
+	return g, err
 }
 
 func (a *APICache) GetChannel(s *discordgo.Session, channelID string) (*discordgo.Channel, error) {
@@ -181,8 +182,8 @@ func (a *APICache) GetChannel(s *discordgo.Session, channelID string) (*discordg
 		return c, nil
 	}
 	c, err := s.Channel(channelID)
-	if err == nil {
+	if c == nil {
 		a.channels[channelID] = c
 	}
-	return c, nil
+	return c, err
 }
