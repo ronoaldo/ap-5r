@@ -218,7 +218,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		displayName := filter
 		if displayName == "rebel" {
 			displayName = "rebel scum"
-		} else if displayName == "imperial troopers" {
+		} else if displayName == "imperial trooper" {
 			displayName = "empire's finest"
 		} else if displayName == "resistance" {
 			displayName = "tank raid kings"
