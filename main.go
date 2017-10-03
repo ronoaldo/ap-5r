@@ -191,7 +191,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 					{"Speed", strconv.FormatInt(stats.Speed, 10), true},
 					{"Potency", fmt.Sprintf("%.02f%%", stats.Potency), true},
 					{"Tenacity", fmt.Sprintf("%.02f%%", stats.Tenacity), true},
-					{"Critical Damage", fmt.Sprintf("%d%%", stats.CriticalDamage), true},
+					{"Critical Damage", fmt.Sprintf("%.02f%%", stats.CriticalDamage), true},
 					{"Physical Damage", fmt.Sprintf("%d", stats.PhysicalDamage), true},
 					{"Special Damage", fmt.Sprintf("%d", stats.SpecialDamate), true},
 				},
@@ -218,6 +218,10 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		displayName := filter
 		if displayName == "rebel" {
 			displayName = "rebel scum"
+		} else if displayName == "imperial troopers" {
+			displayName = "empire's finest"
+		} else if displayName == "resistance" {
+			displayName = "tank raid kings"
 		}
 		sent, _ := send(s, m.ChannelID, "Checking %s characters on %s faction ... This may take some time.", unquote(profile), displayName)
 		defer cleanup(s, sent)
