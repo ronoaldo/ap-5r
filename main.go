@@ -331,7 +331,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			fmt.Fprintf(&msg, "**%d** zetas on *%s*\n", count, zeta)
 		}
 		if len(zetaCount) == 0 {
-			fmt.Fprintf(&msg, "No one was brave enough! Or the caracter has no zetas. I'm not sure...\n")
+			fmt.Fprintf(&msg, "No one was brave enough! Or the character has no zetas. I'm not sure...\n")
 		}
 		fmt.Fprintf(&msg, "\n*Fun fact*\n")
 		fmt.Fprintf(&msg, "Average speed is %.02f, with the "+
