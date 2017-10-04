@@ -172,7 +172,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			send(s, m.ChannelID, "Good, you are learning! But you need to provide a character name. Try /info tfp")
 			return
 		}
-		c := swgohgg.NewClient(profile)
+		c := swgohgg.NewClient(profile).UseCache(true)
 		collection, err := c.Collection()
 		if err != nil {
 			send(s, m.ChannelID, "Oops, that did not worked as expected: %v. I hope nothing is broken ....", err.Error())
@@ -191,10 +191,10 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			Embed: &discordgo.MessageEmbed{
 				Title: fmt.Sprintf("%s stats for %s", unquote(profile), swgohgg.CharName(char)),
 				Fields: []*discordgo.MessageEmbedField{
-					{"Basic", fmt.Sprintf("%d* G%d", stats.Stars, stats.GearLevel), true},
-					{"Health", strconv.FormatInt(stats.Health, 10), true},
-					{"Protection", strconv.FormatInt(stats.Protection, 10), true},
-					{"Speed", strconv.FormatInt(stats.Speed, 10), true},
+					{"Basic", fmt.Sprintf("%d* G%d Lvl %d", stats.Stars, stats.GearLevel, stats.Level), true},
+					{"Health", strconv.Itoa(stats.Health), true},
+					{"Protection", strconv.Itoa(stats.Protection), true},
+					{"Speed", strconv.Itoa(stats.Speed), true},
 					{"Potency", fmt.Sprintf("%.02f%%", stats.Potency), true},
 					{"Tenacity", fmt.Sprintf("%.02f%%", stats.Tenacity), true},
 					{"Critical Damage", fmt.Sprintf("%.02f%%", stats.CriticalDamage), true},
@@ -216,13 +216,21 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			askForProfile(s, m, "/arena")
 			return
 		}
-		gg := swgohgg.NewClient(profile)
+		sent, _ := send(s, m.ChannelID, "OK, let me check your profile...")
+		cleanup(s, sent)
+		url := fmt.Sprintf("https://swgoh.gg/u/%s/", profile)
+		querySelector := ".chart-arena"
+		renderUrl := renderImageAt(logger, url, querySelector, "", "")
+		gg := swgohgg.NewClient(profile).UseCache(true)
 		team, err := gg.Arena()
 		if err != nil {
 			logger.Errorf("Unable to fetch your arena team: %v", err)
 			send(s, m.ChannelID, "Oh no! I was unable to fetch your profile named '%s'. Please make sure the information is correct ", profile)
 		}
 		embed := &discordgo.MessageEmbed{
+			Image: &discordgo.MessageEmbedImage{
+				URL: renderUrl,
+			},
 			Title:  fmt.Sprintf("%s current arena team", profile),
 			Color:  embedColor,
 			Footer: copyrightFooter,
@@ -284,11 +292,106 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 				Footer: copyrightFooter,
 			},
 		})
+	} else if strings.HasPrefix(m.Content, "/lookup") {
+		args := ParseArgs(m.Content)
+		char := swgohgg.CharName(args.Name)
+		guildProfiles := cache.ListProfiles()
+		gg := swgohgg.NewClient("").UseCache(true)
+
+		minStar := 0
+		minGear := 0
+		errCount := 0
+		hasActive := 0
+		resultCount := 0
+
+		cmp := func(a, b int) bool {
+			return a >= b
+		}
+		for _, flag := range args.Flags {
+			flag = strings.ToLower(flag)
+			if strings.HasSuffix(flag, "star") {
+				v, _ := strconv.Atoi(strings.Replace(flag, "star", "", -1))
+				if v >= 0 {
+					minStar = v
+				}
+			} else if strings.HasPrefix(flag, "+g") {
+				v, _ := strconv.Atoi(strings.Replace(flag, "+g", "", -1))
+				if v >= 0 {
+					minGear = v
+				}
+			} else if flag == "+exact" {
+				cmp = func(a, b int) bool {
+					return a == b
+				}
+			} else {
+				logger.Infof("Unknown flag: %v", flag)
+			}
+		}
+		msg := fmt.Sprintf("Looking for profiles that have %s, ", char)
+		if minStar > 0 {
+			msg += fmt.Sprintf(" at %d stars, ", minStar)
+		}
+		if minGear > 0 {
+			msg += fmt.Sprintf(" at gear level %d, ", minGear)
+		}
+		msg += " in the whole server."
+		send(s, m.ChannelID, "%s", msg)
+		lines := make([]string, 0)
+		for i := 0; i < len(guildProfiles); i++ {
+			profile := guildProfiles[i]
+			logger.Infof("Parsing profile #%d (%s)", i, profile)
+			gg.Profile(profile)
+			c, err := gg.CharacterStats(swgohgg.CharName(char))
+			if err != nil {
+				logger.Infof("> Error: %v", err)
+				errCount++
+				continue
+			}
+			// Player has the character, lets see if he has the requested flags
+			hasActive++
+			logger.Infof("> Player has the character")
+			ok := false
+			switch {
+			case minStar > 0 && minGear > 0:
+				// Both filters profided
+				ok = cmp(c.Stars, minStar) && cmp(c.GearLevel, minGear)
+			case minStar > 0:
+				ok = cmp(c.Stars, minStar)
+			case minGear > 0:
+				ok = cmp(c.GearLevel, minGear)
+			}
+			if ok {
+				logger.Infof("> Matches all filters!")
+				resultCount++
+				lines = append(lines, fmt.Sprintf("**%s**", profile))
+			}
+		}
+		msg = fmt.Sprintf("%d players have **%s** %v of a total of %d who have it unlocked.", resultCount, char, args.Flags, hasActive)
+		if errCount > 0 {
+			msg += fmt.Sprintf(" (Unable to parse %d profiles)", errCount)
+		}
+		send(s, m.ChannelID, "%s", msg)
+		// Outputs at most 10 profiles at a time.
+		var buff bytes.Buffer
+		count := 0
+		for i := range lines {
+			buff.WriteString(lines[i] + "\n")
+			count++
+			if count > 100 {
+				send(s, m.ChannelID, "%s", buff.String())
+				count = 0
+				buff.Reset()
+			}
+		}
+		if count > 0 {
+			send(s, m.ChannelID, "%s", buff.String())
+		}
 	} else if strings.HasPrefix(m.Content, "/reload-profiles") {
 		send(s, m.ChannelID, "Copy that. I'll scan the channel #swgoh-gg again...")
 		count, err := cache.ReloadProfiles(s)
 		if err != nil {
-			send(s, m.ChannelID, "Oh no! We're doomed! (err=%v)", err)
+			logger.Errorf("Error loading profiles: %v", err)
+			send(s, m.ChannelID, "Oh no! We're doomed! Unable to read profiles!")
 			return
 		}
 		send(s, m.ChannelID, "Reloaded profiles for the server. I found %d valid links.", count)
@@ -306,7 +409,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		zetaCount := make(map[string]int)
 
 		total := 0
-		gg := swgohgg.NewClient("")
+		gg := swgohgg.NewClient("").UseCache(true)
 		allZetas, err := gg.Zetas()
 		if err != nil {
 			send(s, m.ChannelID, "Warning: I'll be skipping zetas as I could not load them. Something is wrong probably. (err=%v)", err)
@@ -319,7 +422,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 		errCount := 0
 
-		var maxSpeed, avgSpeed, minSpeed int64
+		var maxSpeed, avgSpeed, minSpeed int
 		minSpeed = 99999
 		for _, profile := range guildProfiles {
 			// Fetch char info for each profile
@@ -464,7 +567,7 @@ func onGuildJoin(s *discordgo.Session, event *discordgo.GuildCreate) {
 // the "ready" event from Discord.
 func ready(s *discordgo.Session, event *discordgo.Ready) {
 	version := os.Getenv("BOT_VERSION")
-	name := fmt.Sprintf("RA-7 Protocol Droid")
+	name := fmt.Sprintf("AP-5R Protocol Droid")
 	if *useDev {
 		name = name + " Beta"
 	}
