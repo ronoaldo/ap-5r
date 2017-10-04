@@ -60,15 +60,23 @@ func main() {
 	dg.Close()
 }
 
-var helpMessage = `Hi, %s, I'm AP-5R and I'm the Empire protocol droid unit that survived the Death Star destruction. While I understand many languages, please use the following commands to contact me in this secure channel:
+var helpMessage = `Hi %s, I'm AP-5R and I'm the Empire protocol droid unit that survived the Death Star destruction. While I understand many languages, please use the following commands to contact me in this secure channel:
 
-/mods character: display the mods you have on a character
-/stats character: display character basic stats
-/faction: display an image of your characters in the given faction 
-/server-info character: if you want me to do some number crunch and display server-wide stats about a character
-/reload-profiles: this can be used to instruct me to do a reload of profiles. You don't need to, but just in case.
+**/mods** *character*: display the mods you have on a character
+**/stats** *character*: display character basic stats
+**/arena**: display your current arena basic stats
+**/faction**: display an image of your characters in the given faction 
+**/server-info** *character*: if you want me to do some number crunch and display server-wide stats about a character
+**/reload-profiles**: this can be used to instruct me to do a reload of profiles. You don't need to, but just in case.
 
 I'll assume that all users shared their profile at the #swgoh-gg channel. Please ask your server admin to create one. This is a requirement for me to properly function here. Alternatively, you can use [profile] at the end of /mods and /stats in order to get info from another profile than yours.`
+
+var copyrightFooter = &discordgo.MessageEmbedFooter{
+	IconURL: "https://swgoh.gg/static/logos/swgohgg-logo-twitter-profile.png",
+	Text:    "(C) https://swgoh.gg/",
+}
+
+var embedColor = 0x00d1db
 
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	// Skip messages from self or non-command messages
@@ -112,7 +120,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 	logger.Printf("RECV: (#%v) %v: %v", channel.Name, m.Author, m.Content)
 	if strings.HasPrefix(m.Content, "/help") {
-		send(s, m.ChannelID, helpMessage, m.Author.Mention())
+		send(s, m.ChannelID, helpMessage, m.Author.Username)
 	} else if strings.HasPrefix(m.Content, "/mods") {
 		args := ParseArgs(m.Content)
 		profile, ok := cache.UserProfileIfEmpty(args.Profile, m.Author.ID)
@@ -140,13 +148,11 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			Content: "Here is the thing you asked " + m.Author.Mention(),
 			Embed: &discordgo.MessageEmbed{
 				Title: fmt.Sprintf("%s's %s mods", unquote(profile), swgohgg.CharName(char)),
-				Provider: &discordgo.MessageEmbedProvider{
-					Name: "swgoh.gg",
-					URL:  "https://swgoh.gg/",
-				},
 				Image: &discordgo.MessageEmbedImage{
 					URL: renderUrl,
 				},
+				Color:  embedColor,
+				Footer: copyrightFooter,
 			},
 		})
 	} else if strings.HasPrefix(m.Content, "/info") || strings.HasPrefix(m.Content, "/stats") {
@@ -195,7 +201,42 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 					{"Physical Damage", fmt.Sprintf("%d", stats.PhysicalDamage), true},
 					{"Special Damage", fmt.Sprintf("%d", stats.SpecialDamate), true},
 				},
+				Color:  embedColor,
+				Footer: copyrightFooter,
 			},
+		})
+	} else if strings.HasPrefix(m.Content, "/arena") {
+		args := ParseArgs(m.Content)
+		profile, ok := cache.UserProfileIfEmpty(args.Profile, m.Author.ID)
+		if len(m.Mentions) > 0 {
+			logger.Infof("Using mentioned profile %v", m.Mentions[0])
+			profile, ok = cache.UserProfileIfEmpty(args.Profile, m.Mentions[0].ID)
+		}
+		if !ok {
+			askForProfile(s, m, "/arena")
+			return
+		}
+		gg := swgohgg.NewClient(profile)
+		team, err := gg.Arena()
+		if err != nil {
+			logger.Errorf("Unable to fetch your arena team: %v", err)
+			send(s, m.ChannelID, "Oh no! I was unable to fetch your profile named '%s'. Please make sure the information is correct ", profile)
+		}
+		embed := &discordgo.MessageEmbed{
+			Title:  fmt.Sprintf("%s current arena team", profile),
+			Color:  embedColor,
+			Footer: copyrightFooter,
+		}
+		for _, char := range team {
+			embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
+				Name:   char.Name,
+				Value:  fmt.Sprintf("%d speed, %d health, %d prot.", char.Speed, char.Health, char.Protection),
+				Inline: false,
+			})
+		}
+		s.ChannelMessageSendComplex(m.ChannelID, &discordgo.MessageSend{
+			Content: fmt.Sprintf("So, there is your team %v", m.Author.Mention()),
+			Embed:   embed,
 		})
 	} else if strings.HasPrefix(m.Content, "/faction") {
 		args := ParseArgs(m.Content)
@@ -239,6 +280,8 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 				Image: &discordgo.MessageEmbedImage{
 					URL: renderUrl,
 				},
+				Color:  embedColor,
+				Footer: copyrightFooter,
 			},
 		})
 	} else if strings.HasPrefix(m.Content, "/reload-profiles") {
