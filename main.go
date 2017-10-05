@@ -99,6 +99,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 	if guild == nil {
 		logger.Errorf("Unexpected error: %v (guild=%v)", err, guild)
+		return
 	}
 	logger := &Logger{Guild: guild.Name}
 	cache, ok := guildCache[channel.GuildID]
