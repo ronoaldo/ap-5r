@@ -220,7 +220,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			return
 		}
 		sent, _ := send(s, m.ChannelID, "OK, let me check your profile...")
-		cleanup(s, sent)
+		defer cleanup(s, sent)
 		url := fmt.Sprintf("https://swgoh.gg/u/%s/", profile)
 		querySelector := ".chart-arena"
 		renderUrl := renderImageAt(logger, url, querySelector, "", "")
@@ -296,6 +296,9 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			},
 		})
 	} else if strings.HasPrefix(m.Content, "/lookup") {
+		send(s, m.ChannelID, "Sorry, this command was temporary disabled until I can fix the caching. Thank you for your patience")
+		return
+
 		args := ParseArgs(m.Content)
 		char := swgohgg.CharName(args.Name)
 		guildProfiles := cache.ListProfiles()
