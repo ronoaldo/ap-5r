@@ -226,7 +226,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		querySelector := ".chart-arena"
 		renderUrl := renderImageAt(logger, url, querySelector, "", "")
 		gg := swgohgg.NewClient(profile).UseCache(true)
-		team, err := gg.Arena()
+		team, update, err := gg.Arena()
 		if err != nil {
 			logger.Errorf("Unable to fetch your arena team: %v", err)
 			send(s, m.ChannelID, "Oh no! I was unable to fetch your profile named '%s'. Please make sure the information is correct ", profile)
@@ -235,9 +235,10 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			Image: &discordgo.MessageEmbedImage{
 				URL: renderUrl,
 			},
-			Title:  fmt.Sprintf("%s current arena team", profile),
-			Color:  embedColor,
-			Footer: copyrightFooter,
+			Title:       fmt.Sprintf("%s current arena team", profile),
+			Description: fmt.Sprintf("*Updated at %v", update.Format(time.Stamp)),
+			Color:       embedColor,
+			Footer:      copyrightFooter,
 		}
 		for _, char := range team {
 			embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
