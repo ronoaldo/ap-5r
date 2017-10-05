@@ -97,6 +97,9 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		send(s, m.ChannelID, "Oh, no. This should not happen. Unable to identify server for this message!")
 		return
 	}
+	if guild == nil {
+		logger.Errorf("Unexpected error: %v (guild=%v)", err, guild)
+	}
 	logger := &Logger{Guild: guild.Name}
 	cache, ok := guildCache[channel.GuildID]
 	if !ok {
