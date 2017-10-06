@@ -298,13 +298,9 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			},
 		})
 	} else if strings.HasPrefix(m.Content, "/lookup") {
-		send(s, m.ChannelID, "Sorry, this command was temporary disabled until I can fix the caching. Thank you for your patience")
-		return
-
 		args := ParseArgs(m.Content)
 		char := swgohgg.CharName(args.Name)
 		guildProfiles := cache.ListProfiles()
-		gg := swgohgg.NewClient("").UseCache(true)
 
 		minStar := 0
 		minGear := 0
@@ -342,17 +338,20 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		if minGear > 0 {
 			msg += fmt.Sprintf(" at gear level %d, ", minGear)
 		}
-		msg += " in the whole server."
+		msg += " in the whole server. It takes a long while until I warm up the servers."
 		send(s, m.ChannelID, "%s", msg)
 		lines := make([]string, 0)
 		for i := 0; i < len(guildProfiles); i++ {
-			profile := guildProfiles[i]
-			logger.Infof("Parsing profile #%d (%s)", i, profile)
-			gg.Profile(profile)
-			c, err := gg.CharacterStats(swgohgg.CharName(char))
+			user := guildProfiles[i]
+			logger.Infof("Parsing user #%d (%s)", i, user)
+			profile, err := GetProfile(user)
 			if err != nil {
 				logger.Infof("> Error: %v", err)
 				errCount++
+				continue
+			}
+			c := profile.Character(swgohgg.CharName(char))
+			if c == nil {
 				continue
 			}
 			// Player has the character, lets see if he has the requested flags
@@ -362,16 +361,16 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			switch {
 			case minStar > 0 && minGear > 0:
 				// Both filters profided
-				ok = cmp(c.Stars, minStar) && cmp(c.GearLevel, minGear)
+				ok = cmp(c.Stars, minStar) && cmp(c.Gear, minGear)
 			case minStar > 0:
 				ok = cmp(c.Stars, minStar)
 			case minGear > 0:
-				ok = cmp(c.GearLevel, minGear)
+				ok = cmp(c.Gear, minGear)
 			}
 			if ok {
 				logger.Infof("> Matches all filters!")
 				resultCount++
-				lines = append(lines, fmt.Sprintf("**%s**", profile))
+				lines = append(lines, fmt.Sprintf("**%s**", user))
 			}
 		}
 		msg = fmt.Sprintf("%d players have **%s** %v of a total of %d who have it unlocked.", resultCount, char, args.Flags, hasActive)
@@ -500,11 +499,8 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		send(s, m.ChannelID, msg)
 		return
 	} else if strings.HasPrefix(m.Content, "/guilds-i-am-running") {
-		desc, quant := listMyGuilds(s)
+		quant := listMyGuilds(s)
 		send(s, m.ChannelID, "Running on %d guilds:", quant)
-		if _, err := send(s, m.ChannelID, desc); err != nil {
-			logger.Errorf("Unable to send message %v", err)
-		}
 	} else if strings.HasPrefix(m.Content, "/leave-guild") {
 		args := strings.Fields(m.Content)[1:]
 		if len(args) < 1 {
@@ -589,20 +585,27 @@ func ready(s *discordgo.Session, event *discordgo.Ready) {
 }
 
 // listMyGuilds list all my guilds currently working on.
-func listMyGuilds(s *discordgo.Session) (string, int) {
-	var buff bytes.Buffer
-	guilds, err := s.UserGuilds(100, "", "")
-	if err != nil {
-		logger.Errorf("Unable to list guilds: %v", err)
-		return err.Error(), 0
-	}
+func listMyGuilds(s *discordgo.Session) int {
+	last := ""
 	count := 0
-	for _, g := range guilds {
-		fmt.Fprintf(&buff, "+ Watching guild '%v' (%v)\n", g.Name, g.ID)
-		logger.Printf("+ Watching guild '%v' (%v)", g.Name, g.ID)
-		count++
+	pageSize := 100
+	for {
+		guilds, err := s.UserGuilds(100, last, "")
+		if err != nil {
+			logger.Errorf("Unable to list guilds: %v", err)
+			return -1
+		}
+		for _, g := range guilds {
+			logger.Printf("+ Watching guild '%v' (%v)", g.Name, g.ID)
+			count++
+			last = g.ID
+		}
+		if len(guilds) < pageSize {
+			break
+		}
+		time.Sleep(1 * time.Second)
 	}
-	return buff.String(), count
+	return count
 }
 
 func renderImageAt(logger *Logger, targetUrl, querySelector, click, size string) string {

@@ -32,6 +32,7 @@ func (c *Cache) SetUserProfile(user, profile string) {
 	c.profilesMutex.Lock()
 	defer c.profilesMutex.Unlock()
 	c.profiles[user] = profile
+	// prefetch(c.logger, fmt.Sprintf("https://swgoh-api.appspot.com/v1/profile/%s", profile))
 }
 
 func (c *Cache) UserProfileIfEmpty(profile, user string) (string, bool) {
