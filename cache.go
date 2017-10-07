@@ -32,9 +32,10 @@ func (c *Cache) SetUserProfile(user, profile string) {
 	c.profilesMutex.Lock()
 	defer c.profilesMutex.Unlock()
 	c.profiles[user] = profile
-	// prefetch(c.logger, fmt.Sprintf("https://swgoh-api.appspot.com/v1/profile/%s", profile))
 }
 
+// UserProfileIfEmpty attempts to load a user profile if the first argument
+// is empty. Just a shorthand to get some syntax suggar.
 func (c *Cache) UserProfileIfEmpty(profile, user string) (string, bool) {
 	if profile != "" {
 		return profile, true
@@ -42,11 +43,13 @@ func (c *Cache) UserProfileIfEmpty(profile, user string) (string, bool) {
 	return c.UserProfile(user)
 }
 
+// UserProfile returns the profile associated with the user.
 func (c *Cache) UserProfile(user string) (string, bool) {
 	profile, ok := c.profiles[user]
 	return profile, ok
 }
 
+// ListProfiles list all profiles in the current guild.
 func (c *Cache) ListProfiles() (res []string) {
 	for _, v := range c.profiles {
 		res = append(res, v)
@@ -54,6 +57,7 @@ func (c *Cache) ListProfiles() (res []string) {
 	return res
 }
 
+// RemoeAllProfiles clear up all bot memories about profiles and users.
 func (c *Cache) RemoveAllProfiles() {
 	// Cleanup all profiles of the given guild
 	c.profilesMutex.Lock()
@@ -61,6 +65,8 @@ func (c *Cache) RemoveAllProfiles() {
 	c.profiles = make(map[string]string)
 }
 
+// ReloadProfiles clears the profile cache and parse all messages in the
+// #swgoh-gg channel to associate users with profiles.
 func (c *Cache) ReloadProfiles(s *discordgo.Session) (int, error) {
 	guild, err := s.Guild(c.guildID)
 	if err != nil {
@@ -163,6 +169,7 @@ func NewAPICache() *APICache {
 	}
 }
 
+// GetGuild is a cached version of s.Guild()
 func (a *APICache) GetGuild(s *discordgo.Session, guildID string) (*discordgo.Guild, error) {
 	a.guildsMu.Lock()
 	defer a.guildsMu.Unlock()
@@ -176,6 +183,7 @@ func (a *APICache) GetGuild(s *discordgo.Session, guildID string) (*discordgo.Gu
 	return g, err
 }
 
+// GetChannel is a cached version of s.Channel()
 func (a *APICache) GetChannel(s *discordgo.Session, channelID string) (*discordgo.Channel, error) {
 	a.channelsMu.Lock()
 	defer a.channelsMu.Unlock()

@@ -19,6 +19,8 @@ type Profile struct {
 	Stats      []*swgohgg.CharacterStats
 }
 
+// Character looks for the character name in the profile collection.
+// Returns nil if the player does not have the character.
 func (p *Profile) Character(char string) *swgohgg.Char {
 	for i := range p.Collection {
 		c := p.Collection[i]
@@ -29,6 +31,8 @@ func (p *Profile) Character(char string) *swgohgg.Char {
 	return nil
 }
 
+// CharacterStats looks for the character name in the player collection.
+// Returns nil if the player does not have the character.
 func (p *Profile) CharacterStats(char string) *swgohgg.CharacterStats {
 	for i := range p.Stats {
 		stat := p.Stats[i]
@@ -39,6 +43,7 @@ func (p *Profile) CharacterStats(char string) *swgohgg.CharacterStats {
 	return nil
 }
 
+// GetProfile returns the profile for the player from a cached API.
 func GetProfile(user string) (*Profile, error) {
 	resp, err := http.Get(fmt.Sprintf("https://swgoh-api.appspot.com/v1/profile/%s", user))
 	if err != nil {

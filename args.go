@@ -5,6 +5,24 @@ import (
 	"strings"
 )
 
+// Args is the parsed bot command arguments.
+// Commands are parsed and each portion of the command
+// is extracted into the appropriate fields.
+//
+// Given a command like this:
+//
+//	/stats tie fighter pilot [ronoaldo] +ships +nocache
+//
+// We can expect the resulting struct to contain
+//
+//	Command: "/stats"
+//	Name:    "tie fighter pilot"
+//	Profile: "ronoaldo"
+//	Flags:   ["+ships", "+nocache"]
+//	Line:    "/stats tie fighter pilot [ronoaldo] +shipts +nocache"
+//
+// The parsed struct can then be used by command implementations
+// to provide rich iteractions via flags.
 type Args struct {
 	Command string
 	Name    string
@@ -19,6 +37,7 @@ var (
 	mentionRe    = regexp.MustCompile("\\<@!?-?[0-9]+\\>")
 )
 
+// ParseArgs parses the user command into a structured Args object.
 func ParseArgs(line string) *Args {
 	// Extract metadata first
 	profile := profileArgRe.FindAllString(line, -1)
@@ -46,6 +65,7 @@ func ParseArgs(line string) *Args {
 	return &opts
 }
 
+// ContainsFlag returns true if the flag is present.
 func (o *Args) ContainsFlag(f string) bool {
 	for i := range o.Flags {
 		if o.Flags[i] == f {

@@ -20,6 +20,7 @@ import (
 )
 
 var (
+	// TODO: move this tokens out of source code bro!
 	tokenProd = "MzU1ODczMzk1MTY0MDUzNTEy.DKNDaw.5z1RFro_lwhNxeWAXEgkLCZze8k"
 	tokenDev  = "MzYwNTUxMzQyODgxNjM2MzU1.DKXNJA.dt-WP50VAfItRGHQZgpgoje_Y10"
 	useDev    = flag.Bool("dev", asBool(os.Getenv("USE_DEV")), "Use development mode")
@@ -523,6 +524,8 @@ func send(s *discordgo.Session, channelID, message string, args ...interface{}) 
 	return m, err
 }
 
+// cleanup attempts to delete a posted message, if existent.
+// Used to remove "i am loading stuff", temporary messages the bot issues.
 func cleanup(s *discordgo.Session, m *discordgo.Message) {
 	if s == nil || m == nil {
 		logger.Infof("Skipped message clean up (%v, %v)", s, m)
@@ -567,8 +570,7 @@ func onGuildJoin(s *discordgo.Session, event *discordgo.GuildCreate) {
 	}
 }
 
-// This function will be called (due to AddHandler above) when the bot receives
-// the "ready" event from Discord.
+// ready is the registered callback for when the bot starts.
 func ready(s *discordgo.Session, event *discordgo.Ready) {
 	version := os.Getenv("BOT_VERSION")
 	name := fmt.Sprintf("AP-5R Protocol Droid")
@@ -608,16 +610,13 @@ func listMyGuilds(s *discordgo.Session) int {
 	return count
 }
 
+// renderImageAt pre-renders and cache the image in the cloud function.
 func renderImageAt(logger *Logger, targetUrl, querySelector, click, size string) string {
 	renderPageHost := "https://us-central1-ronoaldoconsulting.cloudfunctions.net"
 	renderUrl := fmt.Sprintf("%s/pageRender?url=%s&querySelector=%s&click=%s&size=%s&ts=%d",
 		renderPageHost, esc(targetUrl), querySelector, click, size, time.Now().UnixNano())
 	prefetch(logger, renderUrl)
 	return renderUrl
-}
-
-func esc(src string) string {
-	return url.QueryEscape(src)
 }
 
 // logJSON takes a value and serializes it to the log stream  as a JSON
@@ -631,6 +630,8 @@ func logJSON(m string, v interface{}) {
 	logger.Printf(" %s: %s", m, string(b))
 }
 
+// asBool is an error-safe parse bool function.
+// returns false if unable to parse the input as boolan.
 func asBool(src string) bool {
 	res, err := strconv.ParseBool(src)
 	if err != nil {
@@ -639,6 +640,13 @@ func asBool(src string) bool {
 	return res
 }
 
+// esc is a shorthand for url.QueryEscape.
+func esc(src string) string {
+	return url.QueryEscape(src)
+}
+
+// unquote attempts to url.QueryUnescape the provided value.
+// returns the original string if unable to escape.
 func unquote(src string) string {
 	if dst, err := url.QueryUnescape(src); err == nil {
 		return dst
