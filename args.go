@@ -65,11 +65,13 @@ func ParseArgs(line string) *Args {
 	return &opts
 }
 
-// ContainsFlag returns true if the flag is present.
-func (o *Args) ContainsFlag(f string) bool {
-	for i := range o.Flags {
-		if o.Flags[i] == f {
-			return true
+// ContainsFlag returns true if any of the flags are present.
+func (o *Args) ContainsFlag(flags ...string) bool {
+	for _, f := range flags {
+		for i := range o.Flags {
+			if o.Flags[i] == f {
+				return true
+			}
 		}
 	}
 	return false

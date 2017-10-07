@@ -63,14 +63,15 @@ func main() {
 
 var helpMessage = `Hi %s, I'm AP-5R and I'm the Empire protocol droid unit that survived the Death Star destruction. While I understand many languages, please use the following commands to contact me in this secure channel:
 
-**/mods** *character*: display the mods you have on a character
-**/stats** *character*: display character basic stats
-**/arena**: display your current arena basic stats
-**/faction**: display an image of your characters in the given faction 
-**/server-info** *character*: if you want me to do some number crunch and display server-wide stats about a character
+**/mods** *character*: display the mods you have on a character.
+**/stats** *character*: display character basic stats.
+**/arena**: display your current arena basic stats.
+**/faction**: display an image of your characters in the given faction. Add +ships, +ship or +s to get ship info.
+**/server-info** *character*: if you want me to do some number crunch and display server-wide stats about a character.
 **/reload-profiles**: this can be used to instruct me to do a reload of profiles. You don't need to, but just in case.
+**/share-this-bot**: if you want my help in a galaxy far, far away...
 
-I'll assume that all users shared their profile at the #swgoh-gg channel. Please ask your server admin to create one. This is a requirement for me to properly function here. Alternatively, you can use [profile] at the end of /mods and /stats in order to get info from another profile than yours.`
+I'll assume that all users shared their profile at the #swgoh-gg channel. Please ask your server admin to create one. This is a important for me to properly function here. Alternatively, you can use [profile] at the end of /mods and /stats in order to get info from another profile than yours.`
 
 var copyrightFooter = &discordgo.MessageEmbedFooter{
 	IconURL: "https://swgoh.gg/static/logos/swgohgg-logo-twitter-profile.png",
@@ -278,7 +279,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		} else if displayName == "resistance" {
 			displayName = "tank raid kings"
 		}
-		sent, _ := send(s, m.ChannelID, "Checking %s characters on %s faction ... This may take some time.", unquote(profile), displayName)
+		sent, _ := send(s, m.ChannelID, "Checking %s units on %s faction ... This may take some time.", unquote(profile), displayName)
 		defer cleanup(s, sent)
 		filter = strings.Replace(strings.ToLower(filter), " ", "-", -1)
 		if filter == "rebel-scum" || filter == "terrorists" {
@@ -286,6 +287,9 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 		targetUrl := fmt.Sprintf("https://swgoh.gg/u/%s/collection/?f=%s", profile, filter)
 		querySelector := ".collection-char-list"
+		if args.ContainsFlag("+ships", "+ship", "+s") {
+			targetUrl = fmt.Sprintf("https://swgoh.gg/u/%s/ships/?f=%s", profile, filter)
+		}
 		renderUrl := renderImageAt(logger, targetUrl, querySelector, "", "desktop")
 		s.ChannelMessageSendComplex(m.ChannelID, &discordgo.MessageSend{
 			Content: "There we go " + m.Author.Mention(),
