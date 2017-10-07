@@ -244,8 +244,8 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 		for _, char := range team {
 			embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
-				Name:   char.Name,
-				Value:  fmt.Sprintf("%d speed, %d health, %d prot.", char.Speed, char.Health, char.Protection),
+				Name:   fmt.Sprintf("%d* %s G%d", char.Stars, char.Name, char.GearLevel),
+				Value:  fmt.Sprintf("%d Speed, %d HP, %d Prot", char.Speed, char.Health, char.Protection),
 				Inline: false,
 			})
 		}
