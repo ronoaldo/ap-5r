@@ -195,7 +195,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		c := swgohgg.NewClient(profile).UseCache(true)
 		collection, err := c.Collection()
 		if err != nil {
-			send(s, m.ChannelID, "Oops, that did not worked as expected: %v. I hope nothing is broken ....", err.Error())
+			send(s, m.ChannelID, "Oops, that did not work as expected: %v. I hope nothing is broken ....", err.Error())
 			return
 		}
 		if !collection.Contains(swgohgg.CharName(char)) {
@@ -203,7 +203,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 		stats, err := c.CharacterStats(char)
 		if err != nil {
-			send(s, m.ChannelID, "Oops, that did not worked as expected: %v. I hope nothing is broken ....", err.Error())
+			send(s, m.ChannelID, "Oops, that did not work as expected: %v. I hope nothing is broken ....", err.Error())
 			return
 		}
 		s.ChannelMessageSendComplex(m.ChannelID, &discordgo.MessageSend{
