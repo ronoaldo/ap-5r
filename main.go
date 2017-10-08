@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -29,6 +30,8 @@ var (
 	apiCache   = NewAPICache()
 
 	logger = &Logger{Guild: "~MAIN~"}
+
+	renderPageHost = "http://localhost:8080"
 )
 
 // main runs the main loop of our bot application.
@@ -38,6 +41,11 @@ func main() {
 	if *useDev {
 		token = tokenDev
 	}
+	renderContainer := os.Getenv("PAGERENDER_PORT_8080_TCP_ADDR")
+	if renderContainer != "" {
+		renderPageHost = fmt.Sprintf("http://%s:8080", renderContainer)
+	}
+	logger.Printf("Using rendering service at %v", renderPageHost)
 
 	dg, err := discordgo.New("Bot " + token)
 	if err != nil {
@@ -149,17 +157,23 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		targetUrl := fmt.Sprintf("https://swgoh.gg/u/%s/collection/%s/", profile, swgohgg.CharSlug(swgohgg.CharName(char)))
 		querySelector := ".list-group.media-list.media-list-stream:nth-child(2)"
 		clickSelector := ".icon.icon-chevron-down.pull-left"
-		renderUrl := renderImageAt(logger, targetUrl, querySelector, clickSelector, "desktop")
+		b, err := renderImageAt(logger, targetUrl, querySelector, clickSelector, "desktop")
+		if err != nil {
+			logger.Errorf("Unable to render image: %v", err)
+			send(s, m.ChannelID, "Oh, no! I was unable to create the image :(")
+			return
+		}
 		s.ChannelMessageSendComplex(m.ChannelID, &discordgo.MessageSend{
 			Content: "Here is the thing you asked " + m.Author.Mention(),
 			Embed: &discordgo.MessageEmbed{
 				Title: fmt.Sprintf("%s's %s mods", unquote(profile), swgohgg.CharName(char)),
 				Image: &discordgo.MessageEmbedImage{
-					URL: renderUrl,
+					URL: "attachment://image.jpg",
 				},
 				Color:  embedColor,
 				Footer: copyrightFooter,
 			},
+			Files: newAttachment(b, "image.jpg"),
 		})
 	} else if strings.HasPrefix(m.Content, "/info") || strings.HasPrefix(m.Content, "/stats") {
 		args := ParseArgs(m.Content)
@@ -226,7 +240,12 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		defer cleanup(s, sent)
 		url := fmt.Sprintf("https://swgoh.gg/u/%s/", profile)
 		querySelector := ".chart-arena"
-		renderUrl := renderImageAt(logger, url, querySelector, "", "")
+		b, err := renderImageAt(logger, url, querySelector, "", "")
+		if err != nil {
+			logger.Errorf("Unable to render image %v", err)
+			send(s, m.ChannelID, "Oh no! I was unable to render the image :O")
+			return
+		}
 		gg := swgohgg.NewClient(profile).UseCache(true)
 		team, update, err := gg.Arena()
 		if err != nil {
@@ -235,7 +254,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 		embed := &discordgo.MessageEmbed{
 			Image: &discordgo.MessageEmbedImage{
-				URL: renderUrl,
+				URL: "attachment://image.jpg",
 			},
 			Title:       fmt.Sprintf("%s current arena team", profile),
 			Description: fmt.Sprintf("*Updated at %v", update.Format(time.Stamp)),
@@ -252,6 +271,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		s.ChannelMessageSendComplex(m.ChannelID, &discordgo.MessageSend{
 			Content: fmt.Sprintf("So, there is your team %v", m.Author.Mention()),
 			Embed:   embed,
+			Files:   newAttachment(b, "image.jpg"),
 		})
 	} else if strings.HasPrefix(m.Content, "/faction") {
 		args := ParseArgs(m.Content)
@@ -290,17 +310,23 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		if args.ContainsFlag("+ships", "+ship", "+s") {
 			targetUrl = fmt.Sprintf("https://swgoh.gg/u/%s/ships/?f=%s", profile, filter)
 		}
-		renderUrl := renderImageAt(logger, targetUrl, querySelector, "", "desktop")
+		b, err := renderImageAt(logger, targetUrl, querySelector, "", "desktop")
+		if err != nil {
+			logger.Errorf("Error rendering image: %v", err)
+			send(s, m.ChannelID, "Oh no! That is not good. Could not render image :-/")
+			return
+		}
 		s.ChannelMessageSendComplex(m.ChannelID, &discordgo.MessageSend{
 			Content: "There we go " + m.Author.Mention(),
 			Embed: &discordgo.MessageEmbed{
 				Title: fmt.Sprintf("%s's characters tagged '%s'", unquote(profile), displayName),
 				Image: &discordgo.MessageEmbedImage{
-					URL: renderUrl,
+					URL: "attachment://image.jpg",
 				},
 				Color:  embedColor,
 				Footer: copyrightFooter,
 			},
+			Files: newAttachment(b, "image.jpg"),
 		})
 	} else if strings.HasPrefix(m.Content, "/lookup") {
 		args := ParseArgs(m.Content)
@@ -549,15 +575,26 @@ func askForProfile(s *discordgo.Session, m *discordgo.MessageCreate, cmd string)
 	send(s, m.ChannelID, msg, m.Author.Mention(), cmd)
 }
 
+func newAttachment(b []byte, name string) []*discordgo.File {
+	return []*discordgo.File{
+		&discordgo.File{
+			Name:        name,
+			ContentType: "image/jpg",
+			Reader:      bytes.NewBuffer(b),
+		},
+	}
+}
+
 // prefetch downloads and discards an URL. It is intended to fetch and to let server
 // cache data.
-func prefetch(logger *Logger, url string) error {
-	resp, err := http.Head(url)
+func download(logger *Logger, url string) ([]byte, error) {
+	resp, err := http.Get(url)
 	logger.Printf("PREF: %s prefetched (resp %v)", url, resp)
 	if err != nil {
-		defer resp.Body.Close()
+		return nil, err
 	}
-	return err
+	defer resp.Body.Close()
+	return ioutil.ReadAll(resp.Body)
 }
 
 // onGuildJoin is currently responsible to log new guilds. We will be adding
@@ -615,12 +652,10 @@ func listMyGuilds(s *discordgo.Session) int {
 }
 
 // renderImageAt pre-renders and cache the image in the cloud function.
-func renderImageAt(logger *Logger, targetUrl, querySelector, click, size string) string {
-	renderPageHost := "https://us-central1-ronoaldoconsulting.cloudfunctions.net"
-	renderUrl := fmt.Sprintf("%s/pageRender?url=%s&querySelector=%s&click=%s&size=%s&ts=%d",
+func renderImageAt(logger *Logger, targetUrl, querySelector, click, size string) ([]byte, error) {
+	renderUrl := fmt.Sprintf("%s/pageRender?url=%s&querySelector=%s&clickSelector=%s&size=%s&ts=%d",
 		renderPageHost, esc(targetUrl), querySelector, click, size, time.Now().UnixNano())
-	prefetch(logger, renderUrl)
-	return renderUrl
+	return download(logger, renderUrl)
 }
 
 // logJSON takes a value and serializes it to the log stream  as a JSON
