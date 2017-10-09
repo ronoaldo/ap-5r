@@ -1,12 +1,25 @@
 DOCKER_ARGS=
+APP=ap-5r
+PROJECT=swgoh-api
 
 build:
-	go build -o ap-5r
-	docker build -t gcr.io/ronoaldoconsulting/ap-5r:latest --build-arg GIT_HASH=$$(git rev-parse --short HEAD) .
+	go build -o $(APP)
+	docker build \
+		-t gcr.io/ronoaldoconsulting/$(APP):latest \
+		--build-arg GIT_HASH=$$(git rev-parse --short HEAD) .
 
 run: build
-	docker run --rm --env USE_DEV=true -it $(DOCKER_ARGS) gcr.io/ronoaldoconsulting/ap-5r:latest
+	docker run --name ap-5r \
+		--rm --env USE_DEV=true \
+	       	-it $(DOCKER_ARGS) \
+		gcr.io/ronoaldoconsulting/$(APP):latest
 
 deploy: build
-	gcloud docker -- push gcr.io/ronoaldoconsulting/ap-5r:latest
-	gcloud compute ssh --command="/bin/bash /home/ronoaldo/reload.sh" chatbot
+	gcloud --project=$(PROJECT) docker -- \
+		push gcr.io/ronoaldoconsulting/$(APP):latest
+	gcloud --project=$(PROJECT) compute \
+		ssh chatbots < scripts/reload.sh
+
+logs:
+	gcloud --project=$(PROJECT) compute \
+		ssh chatbots < scripts/keep-logging.sh
