@@ -43,6 +43,17 @@ func (p *Profile) CharacterStats(char string) *swgohgg.CharacterStats {
 	return nil
 }
 
+// Ship returns the ship for the provided name, if the player has it.
+func (p *Profile) Ship(ship string) *swgohgg.Ship {
+	for i := range p.Ships {
+		s := p.Ships[i]
+		if strings.ToLower(ship) == strings.ToLower(s.Name) {
+			return s
+		}
+	}
+	return nil
+}
+
 // GetProfile returns the profile for the player from a cached API.
 func GetProfile(user string) (*Profile, error) {
 	resp, err := http.Get(fmt.Sprintf("https://swgoh-api.appspot.com/v1/profile/%s", user))

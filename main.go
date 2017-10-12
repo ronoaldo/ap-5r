@@ -344,7 +344,12 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		})
 	} else if strings.HasPrefix(m.Content, "/lookup") {
 		args := ParseArgs(m.Content)
-		char := swgohgg.CharName(args.Name)
+		ships := args.ContainsFlag("+ships", "+ship", "+s")
+
+		unit := swgohgg.CharName(args.Name)
+		if ships {
+			unit = swgohgg.ShipForCrew(unit)
+		}
 		guildProfiles := cache.ListProfiles()
 
 		minStar := 0
@@ -380,7 +385,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 				logger.Infof("Unknown flag: %v", flag)
 			}
 		}
-		msg := fmt.Sprintf("Looking for profiles that have %s,", char)
+		msg := fmt.Sprintf("Looking for profiles that have %s,", unit)
 		if minStar > 0 {
 			msg += fmt.Sprintf(" at %d stars,", minStar)
 		}
@@ -400,29 +405,41 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 				errCount++
 				continue
 			}
-			c := profile.Character(swgohgg.CharName(char))
-			if c == nil {
-				continue
+			unitStars, unitGear := 0, 0
+			if ships {
+				s := profile.Ship(unit)
+				if s == nil {
+					continue
+				}
+				logger.Infof("> Unit: %v", s)
+				unitStars, unitGear = s.Stars, 12
+			} else {
+				c := profile.Character(unit)
+				if c == nil {
+					continue
+				}
+				logger.Infof("> Unit: %v", c)
+				unitStars, unitGear = c.Stars, c.Gear
 			}
 			ok := false
 			switch {
 			case minStar > 0 && minGear > 0:
-				// Both filters profided
-				ok = cmp(c.Stars, minStar) && cmp(c.Gear, minGear)
+				// Both filters provided
+				ok = cmp(unitStars, minStar) && cmp(unitGear, minGear)
 			case minStar > 0:
-				ok = cmp(c.Stars, minStar)
+				ok = cmp(unitStars, minStar)
 			case minGear > 0:
-				ok = cmp(c.Gear, minGear)
+				ok = cmp(unitGear, minGear)
 			default:
-				ok = c.Stars > 0 && c.Gear > 0
+				ok = unitStars > 0 && unitGear > 0
 			}
 			if ok {
-				logger.Infof("> Player has the character")
+				logger.Infof("> Player has the unit")
 				resultCount++
-				lines = append(lines, fmt.Sprintf("**%s**", user))
+				lines = append(lines, fmt.Sprintf("**%s**", unquote(user)))
 			}
 		}
-		msg = fmt.Sprintf("%d players have **%s** %v.", resultCount, char, args.Flags)
+		msg = fmt.Sprintf("%d players have **%s** %v.", resultCount, unit, args.Flags)
 		if errCount > 0 {
 			msg += fmt.Sprintf(" (Unable to parse %d profiles)", errCount)
 		}
