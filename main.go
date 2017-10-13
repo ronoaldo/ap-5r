@@ -461,13 +461,16 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 	} else if strings.HasPrefix(m.Content, "/reload-profiles") {
 		send(s, m.ChannelID, "Copy that. I'll scan the channel #swgoh-gg again...")
-		count, err := cache.ReloadProfiles(s)
+		count, invalid, err := cache.ReloadProfiles(s)
 		if err != nil {
 			logger.Errorf("Error loading profiles: %v", err)
 			send(s, m.ChannelID, "Oh no! We're doomed! Unable to read profiles!")
 			return
 		}
 		send(s, m.ChannelID, "Reloaded profiles for the server. I found %d valid links.", count)
+		if invalid != "" {
+			send(s, m.ChannelID, "These are invalid profiles: %v", invalid)
+		}
 	} else if strings.HasPrefix(m.Content, "/server-info") {
 		args := strings.Fields(m.Content)[1:]
 		char := strings.TrimSpace(strings.Join(args, " "))

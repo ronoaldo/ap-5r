@@ -67,10 +67,10 @@ func (c *Cache) RemoveAllProfiles() {
 
 // ReloadProfiles clears the profile cache and parse all messages in the
 // #swgoh-gg channel to associate users with profiles.
-func (c *Cache) ReloadProfiles(s *discordgo.Session) (int, error) {
+func (c *Cache) ReloadProfiles(s *discordgo.Session) (int, string, error) {
 	guild, err := s.Guild(c.guildID)
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
 	c.RemoveAllProfiles()
 	c.logger.Printf("> Reloading profiles for guild %s#%s", guild.Name, guild.ID)
@@ -79,7 +79,7 @@ func (c *Cache) ReloadProfiles(s *discordgo.Session) (int, error) {
 	channels, err := s.GuildChannels(guild.ID)
 	if err != nil {
 		c.logger.Errorf("Loading channels. Skipping this guild (%v)", err)
-		return 0, err
+		return 0, "", err
 	}
 	chanID := ""
 	for _, ch := range channels {
@@ -90,11 +90,12 @@ func (c *Cache) ReloadProfiles(s *discordgo.Session) (int, error) {
 	}
 	if chanID == "" {
 		c.logger.Errorf("No channel ID found with name #swgoh-gg. Skipping this guild.")
-		return 0, err
+		return 0, "", err
 	}
 	pageSize := 100
 	first := ""
 	last := ""
+	errors := ""
 	for {
 		c.logger.Printf("Loading messages, last  '%s'", last)
 		messages, err := s.ChannelMessages(chanID, pageSize, last, "", "")
@@ -104,7 +105,7 @@ func (c *Cache) ReloadProfiles(s *discordgo.Session) (int, error) {
 				" requested permissions! If your #swgoh-gg channel is restricted by a tag/role,"+
 				" I need that tag/role too.", guild.Name)
 			c.logger.Errorf("Loading messages from #swgoh-gg channel: %v", err)
-			return 0, err
+			return 0, "", err
 		}
 		c.logger.Printf("> Currently with %d", len(messages))
 		for _, m := range messages {
@@ -112,8 +113,10 @@ func (c *Cache) ReloadProfiles(s *discordgo.Session) (int, error) {
 				first = m.ID + ": " + m.Content
 			}
 			last = m.ID
+			c.logger.Printf("Parsing %v", m.Content)
 			profile := extractProfile(m.Content)
 			if profile == "" {
+				errors = errors + "\n" + m.Content
 				continue
 			}
 			// Let's try to fix some weird names, right?
@@ -122,7 +125,14 @@ func (c *Cache) ReloadProfiles(s *discordgo.Session) (int, error) {
 				// We could decode, so let's encode again in a better way.
 				profile = strings.Replace(url.QueryEscape(aux), "+", "%20", -1)
 			}
-			c.SetUserProfile(m.Author.ID, profile)
+			// Associates the profiel link to the posting user
+			id := m.Author.ID
+			// ... or with the mentioned one
+			if len(m.Mentions) != 0 && !m.MentionEveryone {
+				c.logger.Printf("* Using mentioned ID: %v", m.Mentions)
+				id = m.Mentions[0].ID
+			}
+			c.SetUserProfile(id, profile)
 			c.logger.Printf("> Detected %v[%v]: %v", m.Author, m.Author.ID, profile)
 		}
 		if len(messages) < pageSize {
@@ -132,12 +142,13 @@ func (c *Cache) ReloadProfiles(s *discordgo.Session) (int, error) {
 		time.Sleep(1 * time.Second)
 	}
 	c.logger.Printf("Full profile list loaded %d", len(c.profiles))
-	return len(c.profiles), nil
+	c.logger.Printf("Ignored these invalid links:\n%v", errors)
+	return len(c.profiles), errors, nil
 }
 
 // profileRe is a regular expressions that allows one to extract the
 // user profile nickname on the SWGoH.GG website.
-var profileRe = regexp.MustCompile("https?://swgoh.gg/u/([^/]+)/?")
+var profileRe = regexp.MustCompile("https?://swgoh.gg/u/([^/ ]+)/?")
 
 // extractProfile returns the user profile from the provided
 // link text. Profile is extracted using profileRe.
