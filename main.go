@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"sort"
 	"strconv"
 	"strings"
 	"syscall"
@@ -447,6 +448,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		// Outputs at most 100 profiles at a time.
 		var buff bytes.Buffer
 		count := 0
+		sort.Strings(lines)
 		for i := range lines {
 			buff.WriteString(lines[i] + "\n")
 			count++
@@ -460,6 +462,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			send(s, m.ChannelID, "%s", buff.String())
 		}
 	} else if strings.HasPrefix(m.Content, "/reload-profiles") {
+		args := ParseArgs(m.Content)
 		send(s, m.ChannelID, "Copy that. I'll scan the channel #swgoh-gg again...")
 		count, invalid, err := cache.ReloadProfiles(s)
 		if err != nil {
@@ -468,8 +471,8 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			return
 		}
 		send(s, m.ChannelID, "Reloaded profiles for the server. I found %d valid links.", count)
-		if invalid != "" {
-			send(s, m.ChannelID, "These are invalid profiles: %v", invalid)
+		if invalid != "" && args.ContainsFlag("+v", "+verbose") {
+			send(s, m.ChannelID, "These are invalid profiles:\n%v", invalid)
 		}
 	} else if strings.HasPrefix(m.Content, "/server-info") {
 		args := strings.Fields(m.Content)[1:]

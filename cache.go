@@ -153,7 +153,7 @@ var profileRe = regexp.MustCompile("https?://swgoh.gg/u/([^/ ]+)/?")
 // extractProfile returns the user profile from the provided
 // link text. Profile is extracted using profileRe.
 func extractProfile(src string) string {
-	results := profileRe.FindAllStringSubmatch(src, -1)
+	results := profileRe.FindAllStringSubmatch(strings.ToLower(src), -1)
 	if len(results) == 0 {
 		return ""
 	}
