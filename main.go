@@ -201,17 +201,21 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			return
 		}
 		if !collection.Contains(swgohgg.CharName(char)) {
-			send(s, m.ChannelID, "%s, looks like %s is not activated, is it %s?", char, m.Author.Mention())
+			send(s, m.ChannelID, "It looks like **%s** is not activated, is it %s?", char, m.Author.Mention())
 		}
 		stats, err := c.CharacterStats(char)
 		if err != nil {
 			send(s, m.ChannelID, "Oops, that did not work as expected: %v. I hope nothing is broken ....", err.Error())
 			return
 		}
-		funCharTitle := ""
+		funCharTitle := swgohgg.CharName(char)
 		switch strings.ToLower(swgohgg.CharName(char)) {
 		case "finn":
-			funCharTitle = " Traitor!!!"
+			funCharTitle += " Traitor!!!"
+		case "sith assassin":
+			funCharTitle = "Darth Nox"
+		case "clone sergeant - phase i":
+			funCharTitle = "Hevy"
 		}
 		funComment := " When I grow up I'll have one like this :eyes:"
 		if stats.GearLevel < 9 {
@@ -222,7 +226,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		s.ChannelMessageSendComplex(m.ChannelID, &discordgo.MessageSend{
 			Content: fmt.Sprintf("Wow, nice stats %s!%s", m.Author.Mention(), funComment),
 			Embed: &discordgo.MessageEmbed{
-				Title: fmt.Sprintf("%s stats for %s%s", unquote(profile), swgohgg.CharName(char), funCharTitle),
+				Title: fmt.Sprintf("%s stats for %s", unquote(profile), funCharTitle),
 				URL:   fmt.Sprintf("https://swgoh.gg/u/%s/collection/%s/", profile, swgohgg.CharSlug(char)),
 				Fields: []*discordgo.MessageEmbedField{
 					{"Basic", fmt.Sprintf("%d* G%d Lvl %d", stats.Stars, stats.GearLevel, stats.Level), true},
