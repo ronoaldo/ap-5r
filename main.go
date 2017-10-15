@@ -208,7 +208,8 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			send(s, m.ChannelID, "Oops, that did not work as expected: %v. I hope nothing is broken ....", err.Error())
 			return
 		}
-		funCharTitle := swgohgg.CharName(char)
+		char = swgohgg.CharName(char)
+		funCharTitle := char
 		switch strings.ToLower(swgohgg.CharName(char)) {
 		case "finn":
 			funCharTitle += " Traitor!!!"
@@ -223,11 +224,13 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		} else if stats.Speed < 150 {
 			funComment = " Oh wait, is this a turtle? Give it some speeeeed :rolling_eyes:"
 		}
-		s.ChannelMessageSendComplex(m.ChannelID, &discordgo.MessageSend{
+		embedUrl := fmt.Sprintf("https://swgoh.gg/u/%s/collection/%s/", profile, swgohgg.CharSlug(char))
+		logger.Infof("Sending embed URL=%v", embedUrl)
+		_, err = s.ChannelMessageSendComplex(m.ChannelID, &discordgo.MessageSend{
 			Content: fmt.Sprintf("Wow, nice stats %s!%s", m.Author.Mention(), funComment),
 			Embed: &discordgo.MessageEmbed{
 				Title: fmt.Sprintf("%s stats for %s", unquote(profile), funCharTitle),
-				URL:   fmt.Sprintf("https://swgoh.gg/u/%s/collection/%s/", profile, swgohgg.CharSlug(char)),
+				URL:   embedUrl,
 				Fields: []*discordgo.MessageEmbedField{
 					{"Basic", fmt.Sprintf("%d* G%d Lvl %d", stats.Stars, stats.GearLevel, stats.Level), true},
 					{"Health", strconv.Itoa(stats.Health), true},
@@ -243,6 +246,9 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 				Footer: copyrightFooter,
 			},
 		})
+		if err != nil {
+			logger.Errorf("Unable to send message: %v", err)
+		}
 	} else if strings.HasPrefix(m.Content, "/arena") {
 		args := ParseArgs(m.Content)
 		profile, ok := cache.UserProfileIfEmpty(args.Profile, m.Author.ID)
