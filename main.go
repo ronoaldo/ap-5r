@@ -254,7 +254,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		defer cleanup(s, sent)
 		url := fmt.Sprintf("https://swgoh.gg/u/%s/", profile)
 		querySelector := ".chart-arena"
-		b, err := renderImageAt(logger, url, querySelector, "", "")
+		b, err := renderImageAt(logger, url, querySelector, "", "ipad")
 		if err != nil {
 			logger.Errorf("Unable to render image %v", err)
 			send(s, m.ChannelID, "Oh no! I was unable to render the image :O")
@@ -280,11 +280,11 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
 				Name:   fmt.Sprintf("%d* %s G%d", char.Stars, char.Name, char.GearLevel),
 				Value:  fmt.Sprintf("%d *Speed*, %d *HP*, %d *Prot*", char.Speed, char.Health, char.Protection),
-				Inline: false,
+				Inline: true,
 			})
 		}
 		s.ChannelMessageSendComplex(m.ChannelID, &discordgo.MessageSend{
-			Content: fmt.Sprintf("So, there is your team %v", m.Author.Mention()),
+			Content: fmt.Sprintf("So, here is the team you asked for, %v", m.Author.Mention()),
 			Embed:   embed,
 			Files:   newAttachment(b, "image.jpg"),
 		})
