@@ -201,7 +201,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			return
 		}
 		if !collection.Contains(swgohgg.CharName(char)) {
-			send(s, m.ChannelID, "%s, looks like you don't have %s activated yet, do you?", m.Author.Mention(), char)
+			send(s, m.ChannelID, "%s, looks like %s is not activated, is it %s?", char, m.Author.Mention())
 		}
 		stats, err := c.CharacterStats(char)
 		if err != nil {
@@ -386,16 +386,17 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 				logger.Infof("Unknown flag: %v", flag)
 			}
 		}
-		msg := fmt.Sprintf("Looking for profiles that have %s,", unit)
+		msg := fmt.Sprintf("Looking for profiles that have **%s**,", unit)
 		if minStar > 0 {
-			msg += fmt.Sprintf(" at %d stars,", minStar)
+			msg += fmt.Sprintf(" at **%d stars**,", minStar)
 		}
 		if minGear > 0 {
-			msg += fmt.Sprintf(" at gear level %d,", minGear)
+			msg += fmt.Sprintf(" at **gear level %d**,", minGear)
 		}
 		msg += " in the whole server. It takes a long while until I get this data."
-		msg += " Well, why don't you grab some oil for me?"
-		send(s, m.ChannelID, "%s", msg)
+		msg += " Well, why don't you grab some oil for me? :clock10: :clock10: :clock10:"
+		sent, _ := send(s, m.ChannelID, "%s", msg)
+		defer cleanup(s, sent)
 		lines := make([]string, 0)
 		for i := 0; i < len(guildProfiles); i++ {
 			user := guildProfiles[i]
@@ -482,7 +483,9 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			return
 		}
 		guildProfiles := cache.ListProfiles()
-		send(s, m.ChannelID, "Loading %d profiles in the server. This may take a while. You can take some tea.", len(guildProfiles))
+		sent, err := send(s, m.ChannelID, "Loading %d profiles in the server. This may take a while. "+
+			"Take some tea and bring me some oil please. :clock10:", len(guildProfiles))
+		defer cleanup(s, sent)
 		stars := make(map[int]int)
 		gear := make(map[int]int)
 		zetaCount := make(map[string]int)

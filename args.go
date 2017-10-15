@@ -33,7 +33,7 @@ type Args struct {
 
 var (
 	profileArgRe = regexp.MustCompile("\\[.*\\]")
-	flagsRe      = regexp.MustCompile("\\+[a-z0-9]+")
+	flagsRe      = regexp.MustCompile("\\+[a-zA-Z0-9]+")
 	mentionRe    = regexp.MustCompile("\\<@!?-?[0-9]+\\>")
 )
 
@@ -51,8 +51,8 @@ func ParseArgs(line string) *Args {
 	if len(profile) > 0 {
 		opts.Profile = strings.Trim(profile[0], "[]")
 	}
-	if len(flags) > 0 {
-		opts.Flags = flags
+	for _, f := range flags {
+		opts.Flags = append(opts.Flags, strings.ToLower(f))
 	}
 
 	// Parse remaining as cmd, name
@@ -60,7 +60,7 @@ func ParseArgs(line string) *Args {
 	if len(fields) == 0 {
 		return &opts
 	}
-	opts.Command = fields[0]
+	opts.Command = strings.ToLower(fields[0])
 	opts.Name = strings.Join(fields[1:], " ")
 	return &opts
 }
