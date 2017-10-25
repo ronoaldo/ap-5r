@@ -61,7 +61,10 @@ func GetProfile(user string) (*Profile, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-
+	if resp.StatusCode == 202 {
+		// Profile is loading in background return proper signal
+		return nil, nil
+	}
 	if resp.StatusCode > 299 {
 		return nil, fmt.Errorf("Error loading profile: %v %v", resp.Status, resp.StatusCode)
 	}

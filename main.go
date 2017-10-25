@@ -257,7 +257,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			profile, ok = cache.UserProfileIfEmpty(args.Profile, m.Mentions[0].ID)
 		}
 		if !ok {
-			askForProfile(s, m, "/arena")
+			askForProfile(s, m, "arena")
 			return
 		}
 		sent, _ := send(s, m.ChannelID, "OK, let me check your profile...")
@@ -367,6 +367,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		minGear := 0
 		errCount := 0
 		resultCount := 0
+		loadingCount := 0
 
 		cmp := func(a, b int) bool {
 			return a >= b
@@ -417,6 +418,11 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 				errCount++
 				continue
 			}
+			if profile == nil {
+				logger.Infof("*** Loading in background: %v***", err)
+				loadingCount++
+				continue
+			}
 			unitStars, unitGear := 0, 0
 			if ships {
 				s := profile.Ship(unit)
@@ -452,9 +458,6 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			}
 		}
 		msg = fmt.Sprintf("%d players have **%s** %v.", resultCount, unit, args.Flags)
-		if errCount > 0 {
-			msg += fmt.Sprintf(" (Unable to parse %d profiles)", errCount)
-		}
 		send(s, m.ChannelID, "%s", msg)
 		// Outputs at most 100 profiles at a time.
 		var buff bytes.Buffer
@@ -471,6 +474,14 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 		if count > 0 {
 			send(s, m.ChannelID, "%s", buff.String())
+		}
+		if errCount > 0 {
+			send(s, m.ChannelID, "I was unable to parse %d profiles. :cry:", errCount)
+		}
+		if loadingCount > 0 {
+			send(s, m.ChannelID, "And I'm still analysing %d profiles. Please try again in 10min :grin:. "+
+				"If you keep receiving this, some profiles on https://swgoh.gg/ may be outdated and need to do "+
+				"a manual sync.", loadingCount)
 		}
 	} else if strings.HasPrefix(m.Content, "/reload-profiles") {
 		args := ParseArgs(m.Content)
