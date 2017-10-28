@@ -22,10 +22,8 @@ import (
 )
 
 var (
-	// TODO: move this tokens out of source code bro!
-	tokenProd = "MzU1ODczMzk1MTY0MDUzNTEy.DKNDaw.5z1RFro_lwhNxeWAXEgkLCZze8k"
-	tokenDev  = "MzYwNTUxMzQyODgxNjM2MzU1.DKXNJA.dt-WP50VAfItRGHQZgpgoje_Y10"
-	useDev    = flag.Bool("dev", asBool(os.Getenv("USE_DEV")), "Use development mode")
+	token   = flag.String("token", os.Getenv("BOT_TOKEN"), "Token to connect to the discord api")
+	devMode = flag.Bool("dev", asBool(os.Getenv("USE_DEV")), "Use development mode")
 
 	guildCache = make(map[string]*Cache)
 	apiCache   = NewAPICache()
@@ -38,17 +36,19 @@ var (
 // main runs the main loop of our bot application.
 func main() {
 	flag.Parse()
-	var token = tokenProd
-	if *useDev {
-		token = tokenDev
+	// Check we have a token
+	if *token == "" {
+		logger.Fatalf("Error initializing bot: missing token")
 	}
+	// When using linked docker containers, lookup for pagerender addr
 	renderContainer := os.Getenv("PAGERENDER_PORT_8080_TCP_ADDR")
 	if renderContainer != "" {
 		renderPageHost = fmt.Sprintf("http://%s:8080", renderContainer)
 	}
 	logger.Printf("Using rendering service at %v", renderPageHost)
 
-	dg, err := discordgo.New("Bot " + token)
+	// Start the websocket listener
+	dg, err := discordgo.New("Bot " + *token)
 	if err != nil {
 		logger.Fatalf("Error initializing: %v", err)
 	}
@@ -83,13 +83,22 @@ var helpMessage = `Hi %s, I'm AP-5R and I'm the Empire protocol droid unit that 
 
 I'll assume that all users shared their profile at the #swgoh-gg channel. Please ask your server admin to create one. This is a important for me to properly function here. Alternatively, you can use [profile] at the end of /mods and /stats in order to get info from another profile than yours.`
 
+// copyrightFooter is a reusable embed footer.
 var copyrightFooter = &discordgo.MessageEmbedFooter{
 	IconURL: "https://swgoh.gg/static/logos/swgohgg-logo-twitter-profile.png",
 	Text:    "(C) https://swgoh.gg/",
 }
 
+// embedColor is the default color for embeds.
 var embedColor = 0x00d1db
 
+// messageCreate is called by discordgo API when a new message is created
+// on any channel the bot is listening to.
+//
+// This method parses the message and call the apropriate methods that
+// reply to the users.
+//
+// TODO(ronoaldo): it worth refactoring this method to make it define CommandHandlers.
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	// Skip messages from self or non-command messages
 	if m.Author.ID == s.State.User.ID {
@@ -354,6 +363,9 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			Files: newAttachment(b, "image.jpg"),
 		})
 	} else if strings.HasPrefix(m.Content, "/lookup") {
+		// TODO(ronoaldo): this could be better if we make it so that
+		// the bot has a db for each hosted server and we can then
+		// query stuff here instead of this api calls.
 		args := ParseArgs(m.Content)
 		ships := args.ContainsFlag("+ships", "+ship", "+s")
 
@@ -497,8 +509,8 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			send(s, m.ChannelID, "These are invalid profiles:\n%v", invalid)
 		}
 	} else if strings.HasPrefix(m.Content, "/server-info") {
-		args := strings.Fields(m.Content)[1:]
-		char := strings.TrimSpace(strings.Join(args, " "))
+		args := ParseArgs(m.Content)
+		char := args.Name
 		if char == "" {
 			send(s, m.ChannelID, "Oh, there we go again. You need to provide me a character name. Try /server-info tfp")
 			return
@@ -640,6 +652,7 @@ func askForProfile(s *discordgo.Session, m *discordgo.MessageCreate, cmd string)
 	send(s, m.ChannelID, msg, m.Author.Mention(), cmd)
 }
 
+// newAttachment creates a new attachment for the provided image, using the specified name.
 func newAttachment(b []byte, name string) []*discordgo.File {
 	return []*discordgo.File{
 		&discordgo.File{
@@ -684,7 +697,7 @@ func onGuildJoin(s *discordgo.Session, event *discordgo.GuildCreate) {
 func ready(s *discordgo.Session, event *discordgo.Ready) {
 	version := os.Getenv("BOT_VERSION")
 	name := fmt.Sprintf("AP-5R Protocol Droid")
-	if *useDev {
+	if *devMode {
 		name = name + " Beta"
 	}
 	s.UpdateStatus(0, "/help (Version: "+version+")")
@@ -720,7 +733,7 @@ func listMyGuilds(s *discordgo.Session) int {
 	return count
 }
 
-// renderImageAt pre-renders and cache the image in the cloud function.
+// renderImageAt calls the pageRender server and returns the image bytes using download().
 func renderImageAt(logger *Logger, targetUrl, querySelector, click, size string) ([]byte, error) {
 	renderUrl := fmt.Sprintf("%s/pageRender?url=%s&querySelector=%s&clickSelector=%s&size=%s&ts=%d",
 		renderPageHost, esc(targetUrl), querySelector, click, size, time.Now().UnixNano())
