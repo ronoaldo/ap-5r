@@ -81,6 +81,7 @@ func (c *Cache) ReloadProfiles(s *discordgo.Session) (int, string, error) {
 		c.logger.Errorf("Loading channels. Skipping this guild (%v)", err)
 		return 0, "", err
 	}
+	c.logger.Infof("Found %d channels", len(channels))
 	chanID := ""
 	for _, ch := range channels {
 		if ch.Name == "swgoh-gg" {
@@ -97,7 +98,7 @@ func (c *Cache) ReloadProfiles(s *discordgo.Session) (int, string, error) {
 	last := ""
 	errors := ""
 	for {
-		c.logger.Printf("Loading messages, last  '%s'", last)
+		c.logger.Printf("Loading messages on #swgoh-gg(%d), last message ID: '%s'", chanID, last)
 		messages, err := s.ChannelMessages(chanID, pageSize, last, "", "")
 		if err != nil {
 			send(s, chanID, "Oh, wait. I could not read messages on %v's #swgoh-gg channel."+
