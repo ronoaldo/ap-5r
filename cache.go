@@ -98,7 +98,7 @@ func (c *Cache) ReloadProfiles(s *discordgo.Session) (int, string, error) {
 	last := ""
 	errors := ""
 	for {
-		c.logger.Printf("Loading messages on #swgoh-gg(%d), last message ID: '%s'", chanID, last)
+		c.logger.Printf("Loading messages on #swgoh-gg(%v), last message ID: '%s'", chanID, last)
 		messages, err := s.ChannelMessages(chanID, pageSize, last, "", "")
 		if err != nil {
 			send(s, chanID, "Oh, wait. I could not read messages on %v's #swgoh-gg channel."+
