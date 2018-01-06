@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"ronoaldo.gopkg.net/swgoh/swgohgg"
+	"github.com/ronoaldo/swgoh/swgohgg"
 )
 
 // Profile is an entity that saves user data from the website

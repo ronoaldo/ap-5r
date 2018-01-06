@@ -16,8 +16,7 @@ import (
 	"syscall"
 	"time"
 
-	"ronoaldo.gopkg.net/swgoh/swgohgg"
-
+	"github.com/ronoaldo/swgoh/swgohgg"
 	"github.com/bwmarrin/discordgo"
 )
 
