@@ -12,6 +12,8 @@ and slowly became a good Guild tool as well.
 
 Join the discussion in our Discord chat: https://discord.gg/4GJ8Ty2
 
+Support this bot with a donation: http://bit.ly/support-ap-5r
+
 # Running the Bot
 
 The bot can be used in any Discord server, either using a version
