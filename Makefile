@@ -6,7 +6,7 @@ TOKEN=$(shell cat .token 2>/dev/null)
 build:
 	go build -o $(APP)
 	docker build \
-		-t gcr.io/ronoaldoconsulting/$(APP):latest \
+		-t ronoaldo/$(APP):latest \
 		--build-arg GIT_HASH=$$(git rev-parse --short HEAD) .
 
 run: build
@@ -15,14 +15,15 @@ run: build
 		--env USE_DEV=true \
 		--env BOT_TOKEN=$(TOKEN) \
 	       	-it $(DOCKER_ARGS) \
-		gcr.io/ronoaldoconsulting/$(APP):latest
+		ronoaldo/$(APP):latest
 
 deploy: build
-	gcloud --project=$(PROJECT) docker -- \
-		push gcr.io/ronoaldoconsulting/$(APP):latest
+	docker push ronoaldo/$(APP):latest
+
+gce-reload:
 	gcloud --project=$(PROJECT) compute \
 		ssh chatbots < scripts/reload.sh
 
-logs:
+gce-logs:
 	gcloud --project=$(PROJECT) compute \
 		ssh chatbots < scripts/keep-logging.sh
