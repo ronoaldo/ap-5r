@@ -12,6 +12,7 @@ build:
 run: build
 	docker run --name ap-5r \
 		--rm \
+		--link pagerender \
 		--env USE_DEV=true \
 		--env BOT_TOKEN=$(TOKEN) \
 	       	-it $(DOCKER_ARGS) \

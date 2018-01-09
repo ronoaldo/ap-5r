@@ -16,8 +16,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ronoaldo/swgoh/swgohgg"
 	"github.com/bwmarrin/discordgo"
+	"github.com/ronoaldo/swgoh/swgohgg"
 )
 
 var (
@@ -73,7 +73,7 @@ var helpMessage = `Hi %s, I'm AP-5R and I'm the Empire protocol droid unit that 
 
 **/mods** *character*: display the mods you have on a character.
 **/stats** *character*: display character basic stats.
-**/arena**: display your current arena basic stats.
+**/arena**: display your current arena basic stats. Use +more to get more stats.
 **/faction**: display an image of your characters in the given faction. Add +ships, +ship or +s to get ship info.
 **/server-info** *character*: if you want me to do some number crunch and display server-wide stats about a character.
 **/lookup** *character*: to search and see who has a specific character. +1star .. +7star to filter by star level, and +g1 .. +g12 to filter by gear level.
@@ -162,7 +162,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			send(s, m.ChannelID, "%s, use this command with a character name. Try this: /mods tfp", m.Author.Mention())
 			return
 		}
-		sent, _ := send(s, m.ChannelID, "Command received! Let me check mods for **%s** on **%s**'s profile...", char, profile)
+		sent, _ := send(s, m.ChannelID, "Command received! Let me check mods for **%s** on **%s**'s profile... :clock130:", char, profile)
 		defer cleanup(s, sent)
 		targetUrl := fmt.Sprintf("https://swgoh.gg/u/%s/collection/%s/", profile, swgohgg.CharSlug(swgohgg.CharName(char)))
 		querySelector := ".list-group.media-list.media-list-stream:nth-child(2)"
@@ -177,6 +177,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			Content: "Here is the thing you asked " + m.Author.Mention(),
 			Embed: &discordgo.MessageEmbed{
 				Title: fmt.Sprintf("%s's %s mods", unquote(profile), swgohgg.CharName(char)),
+				URL:   targetUrl,
 				Image: &discordgo.MessageEmbedImage{
 					URL: "attachment://image.jpg",
 				},
@@ -240,6 +241,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 				Title: fmt.Sprintf("%s stats for %s", unquote(profile), funCharTitle),
 				URL:   embedUrl,
 				Fields: []*discordgo.MessageEmbedField{
+					{"Power", fmt.Sprintf("%d", stats.GalacticPower), true},
 					{"Basic", fmt.Sprintf("%d* G%d Lvl %d", stats.Stars, stats.GearLevel, stats.Level), true},
 					{"Health", strconv.Itoa(stats.Health), true},
 					{"Protection", strconv.Itoa(stats.Protection), true},
@@ -248,7 +250,9 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 					{"Tenacity", fmt.Sprintf("%.02f%%", stats.Tenacity), true},
 					{"Critical Damage", fmt.Sprintf("%.02f%%", stats.CriticalDamage), true},
 					{"Physical Damage", fmt.Sprintf("%d", stats.PhysicalDamage), true},
-					{"Special Damage", fmt.Sprintf("%d", stats.SpecialDamate), true},
+					{"Physical Crit. Chan.", fmt.Sprintf("%.02f%%", stats.PhysicalCritChance), true},
+					{"Special Damage", fmt.Sprintf("%d", stats.SpecialDamage), true},
+					{"Special Crit. Chan.", fmt.Sprintf("%.02f%%", stats.SpecialCritChance), true},
 				},
 				Color:  embedColor,
 				Footer: copyrightFooter,
@@ -268,7 +272,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			askForProfile(s, m, "arena")
 			return
 		}
-		sent, _ := send(s, m.ChannelID, "OK, let me check your profile...")
+		sent, _ := send(s, m.ChannelID, "OK, let me check your profile... :clock130:")
 		defer cleanup(s, sent)
 		url := fmt.Sprintf("https://swgoh.gg/u/%s/", profile)
 		querySelector := ".chart-arena"
@@ -295,9 +299,13 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			Footer:      copyrightFooter,
 		}
 		for _, char := range team {
+			value := fmt.Sprintf("%d *Speed*, %d *HP*, %d *Prot*", char.Speed, char.Health, char.Protection)
+			if args.ContainsFlag("+more") {
+				value += fmt.Sprintf("\n%.1f *Crit.Dam*, %.1f *Crit.Chan.*", char.CriticalDamage, char.PhysicalCritChance)
+			}
 			embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
 				Name:   fmt.Sprintf("%d* %s G%d", char.Stars, char.Name, char.GearLevel),
-				Value:  fmt.Sprintf("%d *Speed*, %d *HP*, %d *Prot*", char.Speed, char.Health, char.Protection),
+				Value:  value,
 				Inline: true,
 			})
 		}
@@ -353,6 +361,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			Content: "There we go " + m.Author.Mention(),
 			Embed: &discordgo.MessageEmbed{
 				Title: fmt.Sprintf("%s's characters tagged '%s'", unquote(profile), displayName),
+				URL:   targetUrl,
 				Image: &discordgo.MessageEmbedImage{
 					URL: "attachment://image.jpg",
 				},
