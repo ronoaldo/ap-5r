@@ -298,19 +298,43 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			Color:       embedColor,
 			Footer:      copyrightFooter,
 		}
-		for _, char := range team {
-			value := fmt.Sprintf("%d *Speed*, %d *HP*, %d *Prot*", char.Speed, char.Health, char.Protection)
+		var moreMessage string
+		if !args.ContainsFlag("+more") {
+			moreMessage = "\nTo see more stats just ask!  Add +more to your command."
+		}
+		var leaderIndicator string
+		var inline bool
+		for index, char := range team {
+			// Most arena team members get no leader indicator and are inline.
+			leaderIndicator = ""
+			inline = true
+
+			// But index 0 is the leader.. so setup the indicator and dont go inline.
+			if index == 0 {
+				leaderIndicator = "Leader - "
+				inline = false
+			}
+
+			var value string
+
+			// Are they looking for the expanded, "more" display?
 			if args.ContainsFlag("+more") {
-				value += fmt.Sprintf("\n%.1f *Crit.Dam*, %.1f *Crit.Chan.*", char.CriticalDamage, char.PhysicalCritChance)
+				value = fmt.Sprintf("Speed: %d\n", char.Speed)
+				value += fmt.Sprintf("Health: %d\n", char.Health)
+				value += fmt.Sprintf("Protection: %d (%d Total)\n", char.Protection, char.Health+char.Protection)
+				value += fmt.Sprintf("Crit Dmg: %.1f%%\n", char.CriticalDamage)
+				value += fmt.Sprintf("Crit Chance: %.1f%%\n", char.PhysicalCritChance)
+			} else {
+				value = fmt.Sprintf("%d *Spd*, %d *HP*, %d *Prot*", char.Speed, char.Health, char.Protection)
 			}
 			embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
-				Name:   fmt.Sprintf("%d* %s G%d", char.Stars, char.Name, char.GearLevel),
+				Name:   fmt.Sprintf("%s (%s%d* G%d)", char.Name, leaderIndicator, char.Stars, char.GearLevel),
 				Value:  value,
-				Inline: true,
+				Inline: inline,
 			})
 		}
 		s.ChannelMessageSendComplex(m.ChannelID, &discordgo.MessageSend{
-			Content: fmt.Sprintf("So, here is the team you asked for, %v", m.Author.Mention()),
+			Content: fmt.Sprintf("So, here is the team you asked for, %v. %s", m.Author.Mention(), moreMessage),
 			Embed:   embed,
 			Files:   newAttachment(b, "image.jpg"),
 		})
