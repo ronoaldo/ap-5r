@@ -78,3 +78,55 @@ Second, run the AP-5R program from Docker hub, linking it to PageRender:
 
 If all goes well, you should have the two containers running in the background,
 and AP-5R is ready to be added to your Discord server!
+
+### Building your own modified AP-R5 - for contributing code
+
+#### Requirements: 
+ * Go 1.7 or higher (https://golang.org/doc/install)
+
+#### Setup:
+
+1. Create a folder to put all of your AP-5R files, and create a src sub-directory.  For example:
+
+```
+$ mkdir /Users/USERNAME/ap-5r/src
+```
+
+2. Clone this project into that folder:
+
+```
+$ cd /Users/USERNAME/ap-5r/src
+$ git clone https://github.com/ronoaldo/ap-5r.git
+$ ls
+ap-5r
+```
+
+3. Export the GOPATH environment variable:
+
+```
+$ export GOPATH="/Users/USERNAME/ap-5r"
+````
+
+4. Create the file .token as a one-line file that just has your bot's token in it.
+
+```
+$ vim /Users/USERNAME/ap-5r/src/ap-5r/.token
+``` 
+
+Now, go ahead and make your edits to the bots source code.  
+
+When you're ready to start your bot with your modified code, just run: 
+
+```
+$ cd /Users/USERNAME/ap-5r/src/ap-5r
+$ make run
+
+rm ap-5r && GOARCH=amd64 GOOS=linux go build -o ap-5r
+docker build \
+		-t ronoaldo/ap-5r:latest \
+		--build-arg GIT_HASH=$(git rev-parse --short HEAD) .
+~~ Snip ~~
+Bot is now running.  Press CTRL-C to exit.
+```
+
+If all goes well, you'll see the final line above.  Your updated code has been successfully built, your local container updated and it's running on your local system.
