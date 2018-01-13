@@ -4,7 +4,7 @@ PROJECT=swgoh-api
 TOKEN=$(shell cat .token 2>/dev/null)
 
 build:
-	go build -o $(APP)
+	rm ap-5r && GOARCH=amd64 GOOS=linux go build -o $(APP)
 	docker build \
 		-t ronoaldo/$(APP):latest \
 		--build-arg GIT_HASH=$$(git rev-parse --short HEAD) .
