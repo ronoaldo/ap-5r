@@ -370,6 +370,9 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		if filter == "rebel-scum" || filter == "terrorists" {
 			filter = "rebel"
 		}
+		if filter == "dark-side" || filter == "light-side" {
+			filter = strings.Replace(filter, "-", "%20", -1)
+		}
 		targetUrl := fmt.Sprintf("https://swgoh.gg/u/%s/collection/?f=%s", profile, filter)
 		querySelector := ".collection-char-list"
 		if args.ContainsFlag("+ships", "+ship", "+s") {
