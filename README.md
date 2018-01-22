@@ -66,7 +66,7 @@ https://github.com/reactiflux/discord-irc/wiki/Creating-a-discord-bot-&-getting-
 
 First, run the PageRender program from Docker hub:
 
-    docker run --name pagerender --rm --it ronoaldo/pagerender:latest
+    docker run --name pagerender --rm -it ronoaldo/pagerender:latest
 
 PageRender is stateless and the image is a bit large due to
 the dependencies required. 
@@ -75,7 +75,7 @@ the dependencies required.
 
 Second, run the AP-5R program from Docker hub, linking it to PageRender:
 
-    docker run --link pagerender --name ap5r --rm -e BOT_TOKEN=your-token-here --it ronoaldo/ap-5r:latest
+    docker run --link pagerender --name ap5r --rm -e BOT_TOKEN=your-token-here -it ronoaldo/ap-5r:latest
 
 If all goes well, you should have the two containers running in the background,
 and AP-5R is ready to be added to your Discord server!
@@ -123,7 +123,7 @@ echo "YourLongTokenString" >  $GOPATH/src/github.com/ronoaldo/ap-5r/.token
 3. Start the PageRender container:
 
 ```
-docker run --name pagerender --rm --it ronoaldo/pagerender:latest
+docker run --name pagerender --rm -it ronoaldo/pagerender:latest
 ```
 
 4. Start the bot running into development mode:
