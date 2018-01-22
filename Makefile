@@ -15,7 +15,7 @@ run: build
 		--link pagerender \
 		--env USE_DEV=true \
 		--env BOT_TOKEN=$(TOKEN) \
-	       	-it $(DOCKER_ARGS) \
+		-it $(DOCKER_ARGS) \
 		ronoaldo/$(APP):latest
 
 deploy: build

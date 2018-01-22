@@ -25,20 +25,21 @@ Discord server requirements and settings.
 ## Using the hosted version
 
 Just follow this link on your PC and add the hosted version to your server:
-https://discordapp.com/oauth2/authorize?client_id=355873395164053512&scope=bot&permissions=511040
+
+[![Add to server](images/add_to_server.png)](https://discordapp.com/oauth2/authorize?client_id=355873395164053512&scope=bot&permissions=511040)
 
 After adding the bot, check the *Discord server requirements and settings*
 section of this page.
 
 ## Discord server requirements and settings
 
-* You must be a server admin in order to add AP-5R to your server
-* AP-5R requires some API permissions, leave all checkboxes in the link
-  above ON.
+* You must be a **server admin** in order to add AP-5R to your server
+* AP-5R requires some API permissions, leave **all checkboxes in the link
+  above ON**.
 * AP-5R uses a channel to load his server-restrict configuration. As of now,
-  a channel with the name #swgoh-gg need to be fed with profile links.
-  Each player profile link is connected by AP-5R to the user who posts it,
-  or to the user mentioned in the link text.
+  a channel with the name #swgoh-gg need to be filled with profile links.
+  **Each player profile link is connected by AP-5R to the user who posts it,
+  or to the user mentioned in the link text**.
 
 **Tip**: you can restrict where AP-5R can read/write messages by
 changing the permissions of the bot role that Discord
@@ -65,7 +66,7 @@ https://github.com/reactiflux/discord-irc/wiki/Creating-a-discord-bot-&-getting-
 
 First, run the PageRender program from Docker hub:
 
-    docker run --name pagerender --rm ronoaldo/pagerender:latest
+    docker run --name pagerender --rm --it ronoaldo/pagerender:latest
 
 PageRender is stateless and the image is a bit large due to
 the dependencies required. 
@@ -74,59 +75,93 @@ the dependencies required.
 
 Second, run the AP-5R program from Docker hub, linking it to PageRender:
 
-    docker run --link pagerender --name ap5r --rm -e BOT_TOKEN=your-token-here ronoaldo/ap-5r:latest
+    docker run --link pagerender --name ap5r --rm -e BOT_TOKEN=your-token-here --it ronoaldo/ap-5r:latest
 
 If all goes well, you should have the two containers running in the background,
 and AP-5R is ready to be added to your Discord server!
 
-### Building your own modified AP-R5 - for contributing code
+## Building your own modified AP-R5
 
-#### Requirements: 
+In some cases, specially when you want to contribute code,
+it may be helpful to build the bot from source.
+
+### Requirements
+
+The same requirements bellow for self-hosting and:
+
  * Go 1.7 or higher (https://golang.org/doc/install)
+ * Git (https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
 
-#### Setup:
+### Setup
 
-1. Create a folder to put all of your AP-5R files, and create a src sub-directory.  For example:
+In the following step-by-step, we assume that you are familiar
+with command line tools for Linux/Mac or Windows. While these
+should work on Windows, none of the contributors made any
+testing so far in that platform.
 
-```
-$ mkdir /Users/USERNAME/ap-5r/src
-```
-
-2. Clone this project into that folder:
-
-```
-$ cd /Users/USERNAME/ap-5r/src
-$ git clone https://github.com/ronoaldo/ap-5r.git
-$ ls
-ap-5r
-```
-
-3. Export the GOPATH environment variable:
+1. After you install Go, make sure to set your `GOPATH`
+   environment variable. This way you can fetch the source
+   using the Go tools. If you are new to Go and
+   unsure about $GOPATH, set it to $HOME:
 
 ```
-$ export GOPATH="/Users/USERNAME/ap-5r"
-````
+export GOPATH=$HOME
+go get github.com/ronoaldo/ap-5r
+```
 
-4. Create the file .token as a one-line file that just has your bot's token in it.
+*The command bellow will put all source code in the expected location
+that the Go compiler will look for. You should see your code in
+`$GOPATH/src/github.com/ronoaldo/ap-5r`*
+
+2. Follow the [steps here](https://github.com/reactiflux/discord-irc/wiki/Creating-a-discord-bot-&-getting-a-token) to setup your Bot token and save the token
+   as a one-line file in the `ap-5r` root source folder:
 
 ```
-$ vim /Users/USERNAME/ap-5r/src/ap-5r/.token
+echo "YourLongTokenString" >  $GOPATH/src/github.com/ronoaldo/ap-5r/.token
 ``` 
 
-Now, go ahead and make your edits to the bots source code.  
-
-When you're ready to start your bot with your modified code, just run: 
+3. Start the PageRender container:
 
 ```
-$ cd /Users/USERNAME/ap-5r/src/ap-5r
-$ make run
+docker run --name pagerender --rm --it ronoaldo/pagerender:latest
+```
 
+4. Start the bot running into development mode:
+
+```
+cd $GOPATH/src/github.com/ronoaldo/ap-5r
+make run
+```
+
+You should see an output like this:
+
+```
 rm ap-5r && GOARCH=amd64 GOOS=linux go build -o ap-5r
 docker build \
-		-t ronoaldo/ap-5r:latest \
-		--build-arg GIT_HASH=$(git rev-parse --short HEAD) .
+	-t ronoaldo/ap-5r:latest \
+	--build-arg GIT_HASH=$(git rev-parse --short HEAD) .
 ~~ Snip ~~
 Bot is now running.  Press CTRL-C to exit.
 ```
 
 If all goes well, you'll see the final line above.  Your updated code has been successfully built, your local container updated and it's running on your local system.
+
+Note: after you make changes, there is no live-reloading of the bot
+yet. You need to press CTRL-C to kill the bot container and call
+`make run` again
+
+# License
+
+Copyright 2017-2018 Ronoaldo JLP
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
