@@ -39,10 +39,10 @@
 			"revisionTime": "2016-08-13T22:13:03Z"
 		},
 		{
-			"checksumSHA1": "cjBFMemziCmRG8989pbljsLbFVc=",
+			"checksumSHA1": "d9VAPbnMQKEJJLS1cZ03ZtxFNTA=",
 			"path": "github.com/ronoaldo/swgoh/swgohgg",
-			"revision": "1bfc0db6351cdf6c718253b18a52bf821a2f8c70",
-			"revisionTime": "2018-01-09T03:51:40Z"
+			"revision": "090801ec71dc59937c43a5a71dddfa627f17beb5",
+			"revisionTime": "2018-01-25T03:42:04Z"
 		},
 		{
 			"checksumSHA1": "TwxAhBcGuCzWA6H3FvJE1XVZsxo=",
@@ -73,6 +73,24 @@
 			"path": "golang.org/x/net/html/atom",
 			"revision": "42fe2e1c20de1054d3d30f82cc9fb5b41e2e3767",
 			"revisionTime": "2018-01-04T22:23:21Z"
+		},
+		{
+			"checksumSHA1": "IV4MN7KGBSocu/5NR3le3sxup4Y=",
+			"path": "golang.org/x/text/runes",
+			"revision": "e19ae1496984b1c655b8044a65c0300a3c878dd3",
+			"revisionTime": "2017-12-24T20:31:28Z"
+		},
+		{
+			"checksumSHA1": "ziMb9+ANGRJSSIuxYdRbA+cDRBQ=",
+			"path": "golang.org/x/text/transform",
+			"revision": "e19ae1496984b1c655b8044a65c0300a3c878dd3",
+			"revisionTime": "2017-12-24T20:31:28Z"
+		},
+		{
+			"checksumSHA1": "lN2xlA6Utu7tXy2iUoMF2+y9EUE=",
+			"path": "golang.org/x/text/unicode/norm",
+			"revision": "e19ae1496984b1c655b8044a65c0300a3c878dd3",
+			"revisionTime": "2017-12-24T20:31:28Z"
 		}
 	],
 	"rootPath": "github.com/ronoaldo/ap-5r"
