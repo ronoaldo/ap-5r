@@ -60,7 +60,7 @@ func ParseArgs(line string) *Args {
 	if len(fields) == 0 {
 		return &opts
 	}
-	opts.Command = strings.ToLower(fields[0])
+	opts.Command = strings.ToLower(fields[0][len(*cmdPrefix):])
 	opts.Name = strings.Join(fields[1:], " ")
 	return &opts
 }
