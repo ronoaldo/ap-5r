@@ -164,10 +164,10 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 		sent, _ := send(s, m.ChannelID, "Command received! Let me check mods for **%s** on **%s**'s profile... :clock130:", char, profile)
 		defer cleanup(s, sent)
-		targetUrl := fmt.Sprintf("https://swgoh.gg/u/%s/collection/%s/", profile, swgohgg.CharSlug(swgohgg.CharName(char)))
+		targetURL := fmt.Sprintf("https://swgoh.gg/u/%s/collection/%s/", profile, swgohgg.CharSlug(swgohgg.CharName(char)))
 		querySelector := ".list-group.media-list.media-list-stream:nth-child(2)"
 		clickSelector := ".icon.icon-chevron-down.pull-left"
-		b, err := renderImageAt(logger, targetUrl, querySelector, clickSelector, "desktop")
+		b, err := renderImageAt(logger, targetURL, querySelector, clickSelector, "desktop")
 		if err != nil {
 			logger.Errorf("Unable to render image: %v", err)
 			send(s, m.ChannelID, "Oh, no! I was unable to create the image :(")
@@ -177,7 +177,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			Content: "Here is the thing you asked " + m.Author.Mention(),
 			Embed: &discordgo.MessageEmbed{
 				Title: fmt.Sprintf("%s's %s mods", unquote(profile), swgohgg.CharName(char)),
-				URL:   targetUrl,
+				URL:   targetURL,
 				Image: &discordgo.MessageEmbedImage{
 					URL: "attachment://image.jpg",
 				},
@@ -203,7 +203,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			send(s, m.ChannelID, "Good, you are learning! But you need to provide a character name. Try /info tfp")
 			return
 		}
-		c := swgohgg.NewClient(profile).UseCache(false)
+		c := swgohgg.NewClient(profile)
 		collection, err := c.Collection()
 		if err != nil {
 			send(s, m.ChannelID, "Oops, that did not work as expected: %v. I hope nothing is broken ....", err.Error())
@@ -233,13 +233,13 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		} else if stats.Speed < 150 {
 			funComment = " Oh wait, is this a turtle? Give it some speeeeed :rolling_eyes:"
 		}
-		embedUrl := fmt.Sprintf("https://swgoh.gg/u/%s/collection/%s/", profile, swgohgg.CharSlug(char))
-		logger.Infof("Sending embed URL=%v", embedUrl)
+		embedURL := fmt.Sprintf("https://swgoh.gg/u/%s/collection/%s/", profile, swgohgg.CharSlug(char))
+		logger.Infof("Sending embed URL=%v", embedURL)
 		_, err = s.ChannelMessageSendComplex(m.ChannelID, &discordgo.MessageSend{
 			Content: fmt.Sprintf("Wow, nice stats %s!%s", m.Author.Mention(), funComment),
 			Embed: &discordgo.MessageEmbed{
 				Title: fmt.Sprintf("%s stats for %s", unquote(profile), funCharTitle),
-				URL:   embedUrl,
+				URL:   embedURL,
 				Fields: []*discordgo.MessageEmbedField{
 					{"Power", fmt.Sprintf("%d", stats.GalacticPower), true},
 					{"Basic", fmt.Sprintf("%d* G%d Lvl %d", stats.Stars, stats.GearLevel, stats.Level), true},
@@ -282,7 +282,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			send(s, m.ChannelID, "Oh no! I was unable to render the image :O")
 			return
 		}
-		gg := swgohgg.NewClient(profile).UseCache(false)
+		gg := swgohgg.NewClient(profile)
 		team, update, err := gg.Arena()
 		if err != nil {
 			logger.Errorf("Unable to fetch your arena team: %v", err)
@@ -373,12 +373,12 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		if filter == "dark-side" || filter == "light-side" {
 			filter = strings.Replace(filter, "-", "%20", -1)
 		}
-		targetUrl := fmt.Sprintf("https://swgoh.gg/u/%s/collection/?f=%s", profile, filter)
+		targetURL := fmt.Sprintf("https://swgoh.gg/u/%s/collection/?f=%s", profile, filter)
 		querySelector := ".collection-char-list"
 		if args.ContainsFlag("+ships", "+ship", "+s") {
-			targetUrl = fmt.Sprintf("https://swgoh.gg/u/%s/ships/?f=%s", profile, filter)
+			targetURL = fmt.Sprintf("https://swgoh.gg/u/%s/ships/?f=%s", profile, filter)
 		}
-		b, err := renderImageAt(logger, targetUrl, querySelector, "", "desktop")
+		b, err := renderImageAt(logger, targetURL, querySelector, "", "desktop")
 		if err != nil {
 			logger.Errorf("Error rendering image: %v", err)
 			send(s, m.ChannelID, "Oh no! That is not good. Could not render image :-/")
@@ -388,7 +388,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			Content: "There we go " + m.Author.Mention(),
 			Embed: &discordgo.MessageEmbed{
 				Title: fmt.Sprintf("%s's characters tagged '%s'", unquote(profile), displayName),
-				URL:   targetUrl,
+				URL:   targetURL,
 				Image: &discordgo.MessageEmbedImage{
 					URL: "attachment://image.jpg",
 				},
@@ -559,7 +559,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		zetaCount := make(map[string]int)
 
 		total := 0
-		gg := swgohgg.NewClient("").UseCache(false)
+		gg := swgohgg.NewClient("")
 		allZetas, err := gg.Zetas()
 		if err != nil {
 			send(s, m.ChannelID, "Warning: I'll be skipping zetas as I could not load them. Something is wrong probably. (err=%v)", err)
@@ -769,10 +769,10 @@ func listMyGuilds(s *discordgo.Session) int {
 }
 
 // renderImageAt calls the pageRender server and returns the image bytes using download().
-func renderImageAt(logger *Logger, targetUrl, querySelector, click, size string) ([]byte, error) {
-	renderUrl := fmt.Sprintf("%s/pageRender?url=%s&querySelector=%s&clickSelector=%s&size=%s&ts=%d",
-		renderPageHost, esc(targetUrl), querySelector, click, size, time.Now().UnixNano())
-	return download(logger, renderUrl)
+func renderImageAt(logger *Logger, targetURL, querySelector, click, size string) ([]byte, error) {
+	renderURL := fmt.Sprintf("%s/pageRender?url=%s&querySelector=%s&clickSelector=%s&size=%s&ts=%d",
+		renderPageHost, esc(targetURL), querySelector, click, size, time.Now().UnixNano())
+	return download(logger, renderURL)
 }
 
 // logJSON takes a value and serializes it to the log stream  as a JSON

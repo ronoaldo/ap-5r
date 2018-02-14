@@ -57,7 +57,7 @@ func (c *Cache) ListProfiles() (res []string) {
 	return res
 }
 
-// RemoeAllProfiles clear up all bot memories about profiles and users.
+// RemoveAllProfiles clear up all bot memories about profiles and users.
 func (c *Cache) RemoveAllProfiles() {
 	// Cleanup all profiles of the given guild
 	c.profilesMutex.Lock()
