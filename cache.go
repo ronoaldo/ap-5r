@@ -203,7 +203,7 @@ func (a *APICache) GetChannel(s *discordgo.Session, channelID string) (*discordg
 		return c, nil
 	}
 	c, err := s.Channel(channelID)
-	if c == nil {
+	if c != nil {
 		a.channels[channelID] = c
 	}
 	return c, err

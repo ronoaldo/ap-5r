@@ -27,22 +27,10 @@
 			"revisionTime": "2017-12-10T03:53:53Z"
 		},
 		{
-			"checksumSHA1": "d9PxF1XQGLMJZRct2R8qVM/eYlE=",
-			"path": "github.com/hashicorp/golang-lru",
-			"revision": "0a025b7e63adc15a622f29b0b2c4c3848243bbf6",
-			"revisionTime": "2016-08-13T22:13:03Z"
-		},
-		{
-			"checksumSHA1": "9hffs0bAIU6CquiRhKQdzjHnKt0=",
-			"path": "github.com/hashicorp/golang-lru/simplelru",
-			"revision": "0a025b7e63adc15a622f29b0b2c4c3848243bbf6",
-			"revisionTime": "2016-08-13T22:13:03Z"
-		},
-		{
-			"checksumSHA1": "VBMVSHzRrHASiX+prOEOiTq9ZO0=",
+			"checksumSHA1": "4b+UAQwqO5Jnv08TKxUiCGTK3JQ=",
 			"path": "github.com/ronoaldo/swgoh/swgohgg",
-			"revision": "8a2cdb86450ba97b11a41c144879e045ea858bc3",
-			"revisionTime": "2018-02-14T03:31:10Z"
+			"revision": "af98ff7e21c538136850c74825924786619c84f4",
+			"revisionTime": "2018-02-14T21:38:39Z"
 		},
 		{
 			"checksumSHA1": "TwxAhBcGuCzWA6H3FvJE1XVZsxo=",
