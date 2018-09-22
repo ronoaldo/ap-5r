@@ -1,0 +1,9 @@
+#cloud-config
+
+write_files:
+  - path: /etc/docker/daemon.json
+    content: '{"log-driver":"gcplogs"}'
+
+runcmd:
+  - systemctl restart docker
+  - systemctl start kubelet.service

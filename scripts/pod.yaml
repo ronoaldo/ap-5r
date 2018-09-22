@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ap-5r
+spec:
+  containers:
+  - name: pagerender
+    image: ronoaldo/pagerender:latest
+    imagePullPolicy: Always
+    ports:
+    - containerPort: 8080
+      hostPort: 8080
+  - name: ap-5r
+    image: ronoaldo/ap-5r:latest
+    imagePullPolicy: Always
+    env:
+    - name: BOT_TOKEN
+      value: "BOT_TOKEN_GOES_HERE"
+  restartPolicy: Always
+  dnsPolicy: Default
