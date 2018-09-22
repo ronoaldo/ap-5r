@@ -82,6 +82,7 @@ func cmdStats(r CmdRequest) (err error) {
 	}
 	if !collection.Contains(swgohgg.CharName(char)) {
 		send(r.s, r.m.ChannelID, "It looks like **%s** is not activated, is it %s?", char, r.m.Author.Mention())
+		return
 	}
 	stats, err := c.CharacterStats(char)
 	if err != nil {
