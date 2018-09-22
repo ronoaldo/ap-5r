@@ -71,6 +71,10 @@ func (d *CmdDispatcher) Dispatch(s *discordgo.Session, m *discordgo.MessageCreat
 		send(s, m.ChannelID, "Oh, no. This should not happen. Unable to identify channel for this message!")
 		return nil
 	}
+	if channel == nil {
+		logger.Errorf("Unexpected error loading channel for message %v: %v (channel=%v)", m, err, channel)
+	}
+
 	guild, err := apiCache.GetGuild(s, channel.GuildID)
 	if err != nil && strings.HasPrefix(m.Content, *cmdPrefix) {
 		logger.Errorf("Error loading channel: %v", err)
@@ -78,7 +82,7 @@ func (d *CmdDispatcher) Dispatch(s *discordgo.Session, m *discordgo.MessageCreat
 		return nil
 	}
 	if guild == nil {
-		logger.Errorf("Unexpected error: %v (guild=%v)", err, guild)
+		logger.Errorf("Unexpected error loading guild for message %v: %v (guild=%v)", m, err, guild)
 		return nil
 	}
 	logger := &Logger{Guild: guild.Name}
