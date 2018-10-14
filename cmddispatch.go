@@ -73,6 +73,7 @@ func (d *CmdDispatcher) Dispatch(s *discordgo.Session, m *discordgo.MessageCreat
 	}
 	if channel == nil {
 		logger.Errorf("Unexpected error loading channel for message %v: %v (channel=%v)", m, err, channel)
+		return nil
 	}
 
 	guild, err := apiCache.GetGuild(s, channel.GuildID)
