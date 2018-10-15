@@ -44,8 +44,7 @@ func init() {
 	dispatcher.Handle("arena", CmdFunc(cmdArena))
 	dispatcher.Handle("stats", CmdFunc(cmdStats))
 	dispatcher.Handle("info", CmdFunc(cmdStats))
-	dispatcher.Handle("mods",
-		cmdDisabled("the website does not allow me to fetch the data anymore")) // CmdFunc(cmdMods))
+	dispatcher.Handle("mods", CmdFunc(cmdMods))
 	dispatcher.Handle("faction", CmdFunc(cmdFaction))
 	dispatcher.Handle("lookup", CmdFunc(cmdLookup))
 	dispatcher.Handle("server-info", cmdDisabled(
