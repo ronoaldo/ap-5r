@@ -217,33 +217,42 @@ func cmdFaction(r CmdRequest) (err error) {
 	if !r.profileOk {
 		return errProfileRequered
 	}
+	var allyCode string
+	if code, ok := isAllyCode(r.profile); ok {
+		allyCode = code
+	} else {
+		allyCode = r.cache.AllyCode(r.profile)
+		if allyCode == "" {
+			send(r.s, r.m.ChannelID, "Oops! Sorry but I was uanble to find your ally code!")
+		}
+	}
+	// Fetch ally code from profile nickname
 	filter := strings.ToLower(strings.TrimSpace(r.args.Name))
 	if filter == "" {
 		send(r.s, r.m.ChannelID, "Please provide a faction! Try /faction Empire")
 		return
 	}
 	filter = strings.TrimSuffix(filter, "s")
+	filter = factionName(filter)
 	displayName := filter
-	if displayName == "rebel" {
-		displayName = "rebel scum"
-	} else if displayName == "imperial trooper" {
-		displayName = "empire's finest"
-	} else if displayName == "resistance" {
-		displayName = "tank raid kings"
+	if displayName == "Rebel" {
+		displayName = "Rebel Scum"
+	} else if displayName == "Imperial Trooper" {
+		displayName = "Empire's finest"
+	} else if displayName == "Resistance" {
+		displayName = "Tank Raid Kings"
 	}
 	sent, _ := send(r.s, r.m.ChannelID, "Checking **%s** units tagged **%s** ... This may take some time :clock130:", unquote(r.profile), displayName)
 	defer cleanup(r.s, sent)
-	filter = strings.Replace(strings.ToLower(filter), " ", "-", -1)
-	if filter == "rebel-scum" || filter == "terrorists" {
-		filter = "rebel"
+
+	filter = strings.Replace(filter, " ", "+", -1)
+	if filter == "Rebel+Scum" || filter == "Terrorists" || filter == "Terrorist" {
+		filter = "Rebel"
 	}
-	if filter == "dark-side" || filter == "light-side" {
-		filter = strings.Replace(filter, "-", "%20", -1)
-	}
-	targetURL := fmt.Sprintf("https://swgoh.gg/u/%s/collection/?f=%s", r.profile, filter)
+	targetURL := fmt.Sprintf("https://swgoh.gg/p/%s/characters/?f=%s", allyCode, filter)
 	querySelector := ".collection-char-list"
 	if r.args.ContainsFlag("+ships", "+ship", "+s") {
-		targetURL = fmt.Sprintf("https://swgoh.gg/u/%s/ships/?f=%s", r.profile, filter)
+		targetURL = fmt.Sprintf("https://swgoh.gg/p/%s/ships/?f=%s", allyCode, filter)
 	}
 	b, err := renderImageAt(logger, targetURL, querySelector, "", "desktop")
 	if err != nil {

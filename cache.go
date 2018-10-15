@@ -8,12 +8,14 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/ronoaldo/swgoh/swgohgg"
 )
 
 // Cache holds guild-based cache information.
 type Cache struct {
 	guildID       string
 	profiles      map[string]string
+	allyCodes     map[string]string
 	profilesMutex sync.Mutex
 	logger        *Logger
 }
@@ -21,9 +23,10 @@ type Cache struct {
 // NewCache creates a new cache for the given guild ID.
 func NewCache(guildID, guildName string) *Cache {
 	return &Cache{
-		guildID:  guildID,
-		profiles: make(map[string]string),
-		logger:   &Logger{Guild: guildName},
+		guildID:   guildID,
+		profiles:  make(map[string]string),
+		allyCodes: make(map[string]string),
+		logger:    &Logger{Guild: guildName},
 	}
 }
 
@@ -41,6 +44,20 @@ func (c *Cache) UserProfileIfEmpty(profile, user string) (string, bool) {
 		return profile, true
 	}
 	return c.UserProfile(user)
+}
+
+// AllyCode returns the ally code for the provided user,
+// allowing the bot links from the old style to be compatible
+// and still used
+func (c *Cache) AllyCode(user string) string {
+	allyCode, ok := c.allyCodes[user]
+	if !ok {
+		allyCode = swgohgg.NewClient(user).AllyCode()
+		if allyCode != "" {
+			c.allyCodes[user] = allyCode
+		}
+	}
+	return allyCode
 }
 
 // UserProfile returns the profile associated with the user.

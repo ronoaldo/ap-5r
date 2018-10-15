@@ -10,7 +10,9 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"regexp"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -48,7 +50,7 @@ func init() {
 	dispatcher.Handle("lookup", CmdFunc(cmdLookup))
 	dispatcher.Handle("server-info", cmdDisabled(
 		"~~i was doing a DDoS~~ the command was consuming too many resources;"+
-		" it will be back soon")) // CmdFunc(cmdServerInfo))
+			" it will be back soon")) // CmdFunc(cmdServerInfo))
 	dispatcher.Handle("share-this-bot", CmdFunc(cmdShareThisBot))
 
 	// Undocumented on pourpose
@@ -256,4 +258,25 @@ func unquote(src string) string {
 		return dst
 	}
 	return src
+}
+
+var nonDigits = regexp.MustCompile("[^0-9]")
+
+func isAllyCode(src string) (string, bool) {
+	dst := nonDigits.ReplaceAllString(src, "")
+	if len(dst) == 9 {
+		return dst, true
+	}
+	return src, false
+}
+
+func factionName(src string) string {
+	switch strings.ToLower(src) {
+	case "imperial troopers":
+		return "Imperial Troopers"
+	case "bh", "bounty hunter", "bounty hunters":
+		return "Bounty Hunters"
+	}
+
+	return strings.Title(src)
 }
