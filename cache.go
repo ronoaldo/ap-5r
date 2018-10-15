@@ -181,8 +181,8 @@ func extractProfile(src string) string {
 	return results[0][1]
 }
 
-// APICache holds some in-memory cached data.
-type APICache struct {
+// DiscordAPICache holds some in-memory cached data.
+type DiscordAPICache struct {
 	channels   map[string]*discordgo.Channel
 	channelsMu sync.Mutex
 
@@ -191,15 +191,15 @@ type APICache struct {
 }
 
 // NewAPICache creates a new API Cache in-memory.
-func NewAPICache() *APICache {
-	return &APICache{
+func NewAPICache() *DiscordAPICache {
+	return &DiscordAPICache{
 		channels: make(map[string]*discordgo.Channel),
 		guilds:   make(map[string]*discordgo.Guild),
 	}
 }
 
 // GetGuild is a cached version of s.Guild()
-func (a *APICache) GetGuild(s *discordgo.Session, guildID string) (*discordgo.Guild, error) {
+func (a *DiscordAPICache) GetGuild(s *discordgo.Session, guildID string) (*discordgo.Guild, error) {
 	a.guildsMu.Lock()
 	defer a.guildsMu.Unlock()
 	if g, ok := a.guilds[guildID]; ok {
@@ -213,7 +213,7 @@ func (a *APICache) GetGuild(s *discordgo.Session, guildID string) (*discordgo.Gu
 }
 
 // GetChannel is a cached version of s.Channel()
-func (a *APICache) GetChannel(s *discordgo.Session, channelID string) (*discordgo.Channel, error) {
+func (a *DiscordAPICache) GetChannel(s *discordgo.Session, channelID string) (*discordgo.Channel, error) {
 	a.channelsMu.Lock()
 	defer a.channelsMu.Unlock()
 	if c, ok := a.channels[channelID]; ok {
