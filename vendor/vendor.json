@@ -27,10 +27,16 @@
 			"revisionTime": "2017-12-10T03:53:53Z"
 		},
 		{
-			"checksumSHA1": "Xz61+kqCDTKLTya4Tz+v5hl7+g4=",
+			"checksumSHA1": "zkPCeKpfVwQZJBRfgMesKFF1INo=",
 			"path": "github.com/ronoaldo/swgoh/swgohgg",
-			"revision": "ee98bbac3ac26fa341787f3deae857ae40c83ee3",
-			"revisionTime": "2018-10-07T20:28:13Z"
+			"revision": "5cc9f06b27d0b0503ec35c2b586c952dc69d87ab",
+			"revisionTime": "2018-10-15T01:45:53Z"
+		},
+		{
+			"checksumSHA1": "iDcyaVtRUBIIo68dLDG9A5L1XII=",
+			"path": "github.com/ronoaldo/swgoh/swgohgg/api",
+			"revision": "5cc9f06b27d0b0503ec35c2b586c952dc69d87ab",
+			"revisionTime": "2018-10-15T01:45:53Z"
 		},
 		{
 			"checksumSHA1": "TwxAhBcGuCzWA6H3FvJE1XVZsxo=",
