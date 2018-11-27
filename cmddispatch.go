@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/ronoaldo/swgoh/swgohgg"
 )
 
 var (
@@ -14,15 +15,17 @@ var (
 
 // CmdRequest holds parsed data from the context of a MessageCreate event.
 type CmdRequest struct {
-	s         *discordgo.Session
-	m         *discordgo.MessageCreate
-	l         *Logger
-	guild     *discordgo.Guild
-	channel   *discordgo.Channel
-	cache     *Cache
-	args      *Args
-	profile   string
-	profileOk bool
+	s       *discordgo.Session
+	m       *discordgo.MessageCreate
+	l       *Logger
+	guild   *discordgo.Guild
+	channel *discordgo.Channel
+	cache   *Cache
+	args    *Args
+	// profile   string
+	// profileOk bool
+	allyCode   string
+	allyCodeOk bool
 }
 
 // CmdHandler defines a handler to handle commands from user
@@ -115,23 +118,40 @@ func (d *CmdDispatcher) Dispatch(s *discordgo.Session, m *discordgo.MessageCreat
 
 	// Build the CmdRequest
 	args := ParseArgs(m.Content)
-	profile, ok := cache.UserProfileIfEmpty(args.Profile, m.Author.ID)
-	if len(m.Mentions) > 0 {
-		logger.Infof("Using mentioned profile %v", m.Mentions[0])
-		// Lookup mentioned profile
-		profile, ok = cache.UserProfileIfEmpty(args.Profile, m.Mentions[0].ID)
+
+	var allyCode string
+	var allyCodeOk bool
+	// If we got an ally code, use it
+	if args.Profile != "" {
+		// User passed explicitly. Check if it is ally code or not
+		if allyCodeRe.MatchString(args.Profile) {
+			// Use the provided ally code
+			allyCode = args.Profile
+			allyCodeOk = true
+		} else {
+			// Lookup the ally code from the profile
+			allyCode = swgohgg.NewClient(args.Profile).AllyCode()
+			allyCodeOk = allyCode != ""
+		}
+	} else {
+		// User passed implicitly. Check if we had discovered ally code yet
+		discordUserID := m.Author.ID
+		if len(m.Mentions) > 0 {
+			discordUserID = m.Mentions[0].ID
+		}
+		allyCode, allyCodeOk = cache.AllyCode(discordUserID)
 	}
 
 	req := CmdRequest{
-		s:         s,
-		m:         m,
-		l:         logger,
-		guild:     guild,
-		channel:   channel,
-		cache:     cache,
-		args:      args,
-		profile:   profile,
-		profileOk: ok,
+		s:          s,
+		m:          m,
+		l:          logger,
+		guild:      guild,
+		channel:    channel,
+		cache:      cache,
+		args:       args,
+		allyCode:   allyCode,
+		allyCodeOk: allyCodeOk,
 	}
 
 	// Call the CmdHandler
@@ -142,6 +162,7 @@ func (d *CmdDispatcher) Dispatch(s *discordgo.Session, m *discordgo.MessageCreat
 	}
 
 	// Hadle command and react with result
+	logger.Infof("Dispatching command %v", req)
 	err = h.HandleCommand(req)
 	result := emojiCheckMark
 	if err == errProfileRequered {

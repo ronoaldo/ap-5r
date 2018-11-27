@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"sort"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/ronoaldo/swgoh/swgohgg"
+	"github.com/ronoaldo/swgoh/swgohhelp"
 )
 
 // cmdDisabled returns a message saying the command was disabled.
@@ -23,7 +25,7 @@ func cmdDisabled(reason string) CmdHandler {
 
 // cmdMods display mods equiped on a character.
 func cmdMods(r CmdRequest) (err error) {
-	if !r.profileOk {
+	if !r.allyCodeOk {
 		return errProfileRequered
 	}
 	char := r.args.Name
@@ -31,7 +33,7 @@ func cmdMods(r CmdRequest) (err error) {
 		send(r.s, r.m.ChannelID, "%s, use this command with a character name. Try this: /mods tfp", r.m.Author.Mention())
 		return nil
 	}
-	targetURL := fmt.Sprintf("https://swgoh.gg/u/%s/collection/%s/", r.profile, swgohgg.CharSlug(swgohgg.CharName(char)))
+	targetURL := fmt.Sprintf("https://swgoh.gg/p/%s/characters/%s", r.allyCode, swgohgg.CharSlug(swgohgg.CharName(char)))
 	querySelector := ".list-group.media-list.media-list-stream:nth-child(2)"
 	clickSelector := ".icon.icon-chevron-down.pull-left"
 	b, err := renderImageAt(r.l, targetURL, querySelector, clickSelector, "desktop")
@@ -42,7 +44,7 @@ func cmdMods(r CmdRequest) (err error) {
 	_, err = r.s.ChannelMessageSendComplex(r.m.ChannelID, &discordgo.MessageSend{
 		Content: "Here is the thing you asked " + r.m.Author.Mention(),
 		Embed: &discordgo.MessageEmbed{
-			Title: fmt.Sprintf("%s's %s mods", unquote(r.profile), swgohgg.CharName(char)),
+			Title: fmt.Sprintf("%s mods.jpg", swgohgg.CharName(char)),
 			URL:   targetURL,
 			Image: &discordgo.MessageEmbedImage{
 				URL: "attachment://image.jpg",
@@ -57,7 +59,7 @@ func cmdMods(r CmdRequest) (err error) {
 
 // cmdStats display character statistics.
 func cmdStats(r CmdRequest) (err error) {
-	if !r.profileOk {
+	if !r.allyCodeOk {
 		return errProfileRequered
 	}
 	char := r.args.Name
@@ -65,30 +67,25 @@ func cmdStats(r CmdRequest) (err error) {
 		send(r.s, r.m.ChannelID, "Good, you are learning! But you need to provide a character name. Try /info tfp")
 		return nil
 	}
-	c := swgohgg.NewClient(r.profile)
-	gg := swgohgg.NewClient(r.profile)
-	if *swggUser != "" && *swggPass != "" {
-		if err := gg.Login(*swggUser, *swggPass); err != nil {
-			r.l.Errorf("Error logging into website: %v:", err)
-		}
-	} else {
-		r.l.Infof("Using non-auth client")
+	api := swgohhelp.New(context.Background())
+	if _, err := api.SignIn(*apiUser, *apiPass); err != nil {
+		return err
 	}
-
-	collection, err := c.Collection()
+	players, err := api.Players(r.allyCode)
 	if err != nil {
 		send(r.s, r.m.ChannelID, "Oops, that did not work as expected: %v. I hope nothing is broken ....", err.Error())
 		return
 	}
-	if !collection.Contains(swgohgg.CharName(char)) {
+	player := players[0]
+
+	charFilter := swgohgg.CharName(char)
+	unit, ok := player.Roster.FindByName(charFilter)
+	if !ok {
 		send(r.s, r.m.ChannelID, "It looks like **%s** is not activated, is it %s?", char, r.m.Author.Mention())
 		return
 	}
-	stats, err := c.CharacterStats(char)
-	if err != nil {
-		send(r.s, r.m.ChannelID, "Oops, that did not work as expected: %v. I hope nothing is broken ....", err.Error())
-		return
-	}
+	stats := unit.Stats.Final
+
 	char = swgohgg.CharName(char)
 	funCharTitle := char
 	switch strings.ToLower(swgohgg.CharName(char)) {
@@ -100,31 +97,32 @@ func cmdStats(r CmdRequest) (err error) {
 		funCharTitle = "Hevy"
 	}
 	funComment := " When I grow up I'll have one like this :eyes:"
-	if stats.GearLevel < 9 {
+	if unit.Gear < 9 {
 		funComment = " But you need some more gear here hun? :unamused:"
 	} else if stats.Speed < 150 {
 		funComment = " Oh wait, is this a turtle? Give it some speeeeed :rolling_eyes:"
 	}
-	embedURL := fmt.Sprintf("https://swgoh.gg/u/%s/collection/%s/", r.profile, swgohgg.CharSlug(char))
+	embedURL := fmt.Sprintf("https://swgoh.gg/p/%s/collection/%s/", r.allyCode, swgohgg.CharSlug(char))
 	logger.Infof("Sending embed URL=%v", embedURL)
 	_, err = r.s.ChannelMessageSendComplex(r.m.ChannelID, &discordgo.MessageSend{
 		Content: fmt.Sprintf("Wow, nice stats %s!%s", r.m.Author.Mention(), funComment),
 		Embed: &discordgo.MessageEmbed{
-			Title: fmt.Sprintf("%s stats for %s", unquote(r.profile), funCharTitle),
+			Title: fmt.Sprintf("%s stats for %s", unquote(player.Name), funCharTitle),
 			URL:   embedURL,
 			Fields: []*discordgo.MessageEmbedField{
-				{"Power", fmt.Sprintf("%d", stats.GalacticPower), true},
-				{"Basic", fmt.Sprintf("%d* G%d Lvl %d", stats.Stars, stats.GearLevel, stats.Level), true},
+				// TODO:(ronoaldo) fix missing GP field.
+				// {"Power", fmt.Sprintf("%d", unit.GalacticPower), true},
+				{"Basic", fmt.Sprintf("%d* G%d Lvl %d", unit.Rarity, unit.Gear, unit.Level), true},
 				{"Health", strconv.Itoa(stats.Health), true},
 				{"Protection", strconv.Itoa(stats.Protection), true},
 				{"Speed", strconv.Itoa(stats.Speed), true},
-				{"Potency", fmt.Sprintf("%.02f%%", stats.Potency), true},
-				{"Tenacity", fmt.Sprintf("%.02f%%", stats.Tenacity), true},
-				{"Critical Damage", fmt.Sprintf("%.02f%%", stats.CriticalDamage), true},
+				{"Potency", fmt.Sprintf("%.02f%%", stats.Potency*100), true},
+				{"Tenacity", fmt.Sprintf("%.02f%%", stats.Tenacity*100), true},
+				{"Critical Damage", fmt.Sprintf("%.02f%%", stats.CriticalDamage*100), true},
 				{"Physical Damage", fmt.Sprintf("%d", stats.PhysicalDamage), true},
-				{"Physical Crit. Chan.", fmt.Sprintf("%.02f%%", stats.PhysicalCritChance), true},
+				{"Physical Crit. Chan.", fmt.Sprintf("%.02f%%", stats.PhysicalCriticalChance*100), true},
 				{"Special Damage", fmt.Sprintf("%d", stats.SpecialDamage), true},
-				{"Special Crit. Chan.", fmt.Sprintf("%.02f%%", stats.SpecialCritChance), true},
+				{"Special Crit. Chan.", fmt.Sprintf("%.02f%%", stats.SpecialCriticalChance*100), true},
 			},
 			Color:  embedColor,
 			Footer: copyrightFooter,
@@ -135,10 +133,10 @@ func cmdStats(r CmdRequest) (err error) {
 
 // cmdArena display your arena team, statistics and chart.
 func cmdArena(r CmdRequest) (err error) {
-	if !r.profileOk {
+	if !r.allyCodeOk {
 		return errProfileRequered
 	}
-	url := fmt.Sprintf("https://swgoh.gg/u/%s/", r.profile)
+	url := fmt.Sprintf("https://swgoh.gg/p/%s/", r.allyCode)
 	querySelector := ".chart-arena"
 	b, err := renderImageAt(logger, url, querySelector, "", "ipad")
 	if err != nil {
@@ -146,25 +144,18 @@ func cmdArena(r CmdRequest) (err error) {
 		send(r.s, r.m.ChannelID, "Oh no! I was unable to render the image :O")
 		return
 	}
-	gg := swgohgg.NewClient(r.profile)
-	if *swggUser != "" && *swggPass != "" {
-		if err := gg.Login(*swggUser, *swggPass); err != nil {
-			r.l.Errorf("Error logging into website: %v:", err)
-		}
-	} else {
-		r.l.Infof("Using non-auth client")
-	}
+	gg := swgohgg.NewClient("").SetAllyCode(r.allyCode)
 	team, update, err := gg.Arena()
 	if err != nil {
 		logger.Errorf("Unable to fetch your arena team: %v", err)
-		send(r.s, r.m.ChannelID, "Oh no! I was unable to fetch your profile named '%s'. Please make sure the information is correct ", r.profile)
+		send(r.s, r.m.ChannelID, "Oh no! I was unable to fetch your profile for ally code '%s'. Please make sure the information is correct ", r.allyCode)
 	}
 	embed := &discordgo.MessageEmbed{
-		URL: fmt.Sprintf("https://swgoh.gg/u/%s", r.profile),
+		URL: fmt.Sprintf("https://swgoh.gg/p/%s", r.allyCode),
 		Image: &discordgo.MessageEmbedImage{
 			URL: "attachment://image.jpg",
 		},
-		Title:       fmt.Sprintf("%s current arena team", r.profile),
+		Title:       fmt.Sprintf("%s current arena team", r.allyCode),
 		Description: fmt.Sprintf("*Updated at %v*", update.Format(time.Stamp)),
 		Color:       embedColor,
 		Footer:      copyrightFooter,
@@ -214,17 +205,8 @@ func cmdArena(r CmdRequest) (err error) {
 
 // cmdFaction display a faction of a player collection.
 func cmdFaction(r CmdRequest) (err error) {
-	if !r.profileOk {
+	if !r.allyCodeOk {
 		return errProfileRequered
-	}
-	var allyCode string
-	if code, ok := isAllyCode(r.profile); ok {
-		allyCode = code
-	} else {
-		allyCode = r.cache.AllyCode(r.profile)
-		if allyCode == "" {
-			send(r.s, r.m.ChannelID, "Oops! Sorry but I was uanble to find your ally code!")
-		}
 	}
 	// Fetch ally code from profile nickname
 	filter := strings.ToLower(strings.TrimSpace(r.args.Name))
@@ -242,17 +224,17 @@ func cmdFaction(r CmdRequest) (err error) {
 	} else if displayName == "Resistance" {
 		displayName = "Tank Raid Kings"
 	}
-	sent, _ := send(r.s, r.m.ChannelID, "Checking **%s** units tagged **%s** ... This may take some time :clock130:", unquote(r.profile), displayName)
+	sent, _ := send(r.s, r.m.ChannelID, "Checking **%s** units tagged **%s** ... This may take some time :clock130:", unquote(r.allyCode), displayName)
 	defer cleanup(r.s, sent)
 
 	filter = strings.Replace(filter, " ", "+", -1)
 	if filter == "Rebel+Scum" || filter == "Terrorists" || filter == "Terrorist" {
 		filter = "Rebel"
 	}
-	targetURL := fmt.Sprintf("https://swgoh.gg/p/%s/characters/?f=%s", allyCode, filter)
+	targetURL := fmt.Sprintf("https://swgoh.gg/p/%s/characters/?f=%s", r.allyCode, filter)
 	querySelector := ".collection-char-list"
 	if r.args.ContainsFlag("+ships", "+ship", "+s") {
-		targetURL = fmt.Sprintf("https://swgoh.gg/p/%s/ships/?f=%s", allyCode, filter)
+		targetURL = fmt.Sprintf("https://swgoh.gg/p/%s/ships/?f=%s", r.allyCode, filter)
 	}
 	b, err := renderImageAt(logger, targetURL, querySelector, "", "desktop")
 	if err != nil {
@@ -263,7 +245,7 @@ func cmdFaction(r CmdRequest) (err error) {
 	_, err = r.s.ChannelMessageSendComplex(r.m.ChannelID, &discordgo.MessageSend{
 		Content: "There we go " + r.m.Author.Mention(),
 		Embed: &discordgo.MessageEmbed{
-			Title: fmt.Sprintf("%s's characters tagged '%s'", unquote(r.profile), displayName),
+			Title: fmt.Sprintf("Characters tagged %s.jpg", displayName),
 			URL:   targetURL,
 			Image: &discordgo.MessageEmbedImage{
 				URL: "attachment://image.jpg",

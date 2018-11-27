@@ -20,10 +20,10 @@ import (
 )
 
 var (
-	token    = flag.String("token", os.Getenv("BOT_TOKEN"), "Token to connect to the discord api.")
-	devMode  = flag.Bool("dev", asBool(os.Getenv("USE_DEV")), "Use development mode.")
-	swggUser = flag.String("swgoh-user", os.Getenv("SWGOHGG_USER"), "Username to be used to contact swgoh.gg.")
-	swggPass = flag.String("swgoh-pass", os.Getenv("SWGOHGG_PASS"), "Password to be used to contact swgoh.gg.")
+	token   = flag.String("token", os.Getenv("BOT_TOKEN"), "Token to connect to the discord api.")
+	devMode = flag.Bool("dev", asBool(os.Getenv("USE_DEV")), "Use development mode.")
+	apiUser = flag.String("username", os.Getenv("API_USERNAME"), "Username to be used to contact api.swgoh.help.")
+	apiPass = flag.String("password", os.Getenv("API_PASSWORD"), "Password to be used to contact api.swgoh.help.")
 
 	cmdPrefix  = flag.String("cmd-prefix", "/", "The command `prefix` to be used by the bot")
 	guildCache = make(map[string]*Cache)
@@ -46,7 +46,9 @@ func init() {
 	dispatcher.Handle("info", CmdFunc(cmdStats))
 	dispatcher.Handle("mods", CmdFunc(cmdMods))
 	dispatcher.Handle("faction", CmdFunc(cmdFaction))
-	dispatcher.Handle("lookup", CmdFunc(cmdLookup))
+	dispatcher.Handle("lookup", cmdDisabled(
+		"This command is returning empty/stale results. "+
+			"My master is working to bring it back soon...")) //CmdFunc(cmdLookup))
 	dispatcher.Handle("server-info", cmdDisabled(
 		"~~i was doing a DDoS~~ the command was consuming too many resources;"+
 			" it will be back soon")) // CmdFunc(cmdServerInfo))

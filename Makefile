@@ -15,8 +15,8 @@ run: build
 		--link pagerender \
 		--env USE_DEV=true \
 		--env BOT_TOKEN=$(TOKEN) \
-		--env SWGOHGG_USER=$(SWGOHGG_USER) \
-		--env SWGOHGG_PASS=$(SWGOHGG_PASS) \
+		--env API_USERNAME=$(SWGOH_API_USERNAME) \
+		--env API_PASSWORD=$(SWGOH_API_PASSWORD) \
 		-it $(DOCKER_ARGS) \
 		ronoaldo/$(APP):latest
 
