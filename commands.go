@@ -104,9 +104,14 @@ func cmdStats(r CmdRequest) (err error) {
 	}
 	embedURL := fmt.Sprintf("https://swgoh.gg/p/%s/collection/%s/", r.allyCode, swgohgg.CharSlug(char))
 	logger.Infof("Sending embed URL=%v", embedURL)
-	_, err = r.s.ChannelMessageSendComplex(r.m.ChannelID, &discordgo.MessageSend{
+	message := &discordgo.MessageSend{
 		Content: fmt.Sprintf("Wow, nice stats %s!%s", r.m.Author.Mention(), funComment),
-		Embed: &discordgo.MessageEmbed{
+	}
+	d := &drawer{}
+	b, err := d.DrawCharacterStats(unit)
+	if err != nil {
+		logger.Errorf("Error drawing image: %v", err)
+		message.Embed = &discordgo.MessageEmbed{
 			Title: fmt.Sprintf("%s stats for %s", unquote(player.Name), funCharTitle),
 			URL:   embedURL,
 			Fields: []*discordgo.MessageEmbedField{
@@ -126,8 +131,11 @@ func cmdStats(r CmdRequest) (err error) {
 			},
 			Color:  embedColor,
 			Footer: copyrightFooter,
-		},
-	})
+		}
+	} else {
+		message.Files = newAttachment(b, fmt.Sprintf("%s - %s.png", player.Name, unit.Name))
+	}
+	_, err = r.s.ChannelMessageSendComplex(r.m.ChannelID, message)
 	return err
 }
 
