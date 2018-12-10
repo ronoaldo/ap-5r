@@ -17,6 +17,8 @@ run: build
 		--env BOT_TOKEN=$(TOKEN) \
 		--env API_USERNAME=$(SWGOH_API_USERNAME) \
 		--env API_PASSWORD=$(SWGOH_API_PASSWORD) \
+		--env SWGOH_CACHE_DIR=/tmp/cache \
+		--volume $(HOME)/.cache/api.swgoh.help:/tmp/cache \
 		-it $(DOCKER_ARGS) \
 		ronoaldo/$(APP):latest
 

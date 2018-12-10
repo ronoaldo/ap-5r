@@ -39,6 +39,12 @@
 			"revisionTime": "2017-12-10T03:53:53Z"
 		},
 		{
+			"checksumSHA1": "ZMCZfRyzM0OrEoFFDfK/OIjyhQo=",
+			"path": "github.com/ronoaldo/swgoh/cache",
+			"revision": "527269e31c78d0b7f1620fe2cd6b622a5d215ddf",
+			"revisionTime": "2018-12-10T03:36:43Z"
+		},
+		{
 			"checksumSHA1": "Mg5CDvdYpQif+tagWdJLhK/aeQ8=",
 			"path": "github.com/ronoaldo/swgoh/swgohgg",
 			"revision": "c6e7a590a72998e4e79d357c17672c4483872dde",
@@ -51,10 +57,16 @@
 			"revisionTime": "2018-12-03T04:03:00Z"
 		},
 		{
-			"checksumSHA1": "241hWm016xccL/cknwYRHI2zDfw=",
+			"checksumSHA1": "R4QqoDKw4pRM0RIOpB+uqEt1fJU=",
 			"path": "github.com/ronoaldo/swgoh/swgohhelp",
-			"revision": "c6e7a590a72998e4e79d357c17672c4483872dde",
-			"revisionTime": "2018-12-03T04:03:00Z"
+			"revision": "527269e31c78d0b7f1620fe2cd6b622a5d215ddf",
+			"revisionTime": "2018-12-10T03:36:43Z"
+		},
+		{
+			"checksumSHA1": "QsE27lDPDYV0wY9WFEpWS+K4Yv0=",
+			"path": "go.etcd.io/bbolt",
+			"revision": "22d122a8b910d84574434fa23dce0cf8c9e76979",
+			"revisionTime": "2018-12-08T01:02:42Z"
 		},
 		{
 			"checksumSHA1": "TwxAhBcGuCzWA6H3FvJE1XVZsxo=",
