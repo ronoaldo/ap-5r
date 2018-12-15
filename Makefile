@@ -10,6 +10,7 @@ build:
 		--build-arg GIT_HASH=$$(git rev-parse --short HEAD) .
 
 run: build
+	(docker ps | grep pagerender) || docker run -d --rm --name pagerender ronoaldo/pagerender
 	docker run --name ap-5r \
 		--rm \
 		--link pagerender \
