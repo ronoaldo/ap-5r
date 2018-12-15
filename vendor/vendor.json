@@ -39,28 +39,28 @@
 			"revisionTime": "2017-12-10T03:53:53Z"
 		},
 		{
-			"checksumSHA1": "ZMCZfRyzM0OrEoFFDfK/OIjyhQo=",
+			"checksumSHA1": "EMBV/ZmN5LM7EOhJuzA47sIAsxs=",
 			"path": "github.com/ronoaldo/swgoh/cache",
-			"revision": "527269e31c78d0b7f1620fe2cd6b622a5d215ddf",
-			"revisionTime": "2018-12-10T03:36:43Z"
+			"revision": "a7a63387d7aa62e8a9862d670f372585bc9d9e63",
+			"revisionTime": "2018-12-15T13:43:33Z"
 		},
 		{
 			"checksumSHA1": "Mg5CDvdYpQif+tagWdJLhK/aeQ8=",
 			"path": "github.com/ronoaldo/swgoh/swgohgg",
-			"revision": "c6e7a590a72998e4e79d357c17672c4483872dde",
-			"revisionTime": "2018-12-03T04:03:00Z"
+			"revision": "a7a63387d7aa62e8a9862d670f372585bc9d9e63",
+			"revisionTime": "2018-12-15T13:43:33Z"
 		},
 		{
-			"checksumSHA1": "iDcyaVtRUBIIo68dLDG9A5L1XII=",
+			"checksumSHA1": "LDpG5gGqR/gu0IjvFywtn9ig3LI=",
 			"path": "github.com/ronoaldo/swgoh/swgohgg/api",
-			"revision": "c6e7a590a72998e4e79d357c17672c4483872dde",
-			"revisionTime": "2018-12-03T04:03:00Z"
+			"revision": "a7a63387d7aa62e8a9862d670f372585bc9d9e63",
+			"revisionTime": "2018-12-15T13:43:33Z"
 		},
 		{
-			"checksumSHA1": "R4QqoDKw4pRM0RIOpB+uqEt1fJU=",
+			"checksumSHA1": "bayOKAcBm/rzywUFitKeyCqlMXg=",
 			"path": "github.com/ronoaldo/swgoh/swgohhelp",
-			"revision": "527269e31c78d0b7f1620fe2cd6b622a5d215ddf",
-			"revisionTime": "2018-12-10T03:36:43Z"
+			"revision": "a7a63387d7aa62e8a9862d670f372585bc9d9e63",
+			"revisionTime": "2018-12-15T13:43:33Z"
 		},
 		{
 			"checksumSHA1": "QsE27lDPDYV0wY9WFEpWS+K4Yv0=",
