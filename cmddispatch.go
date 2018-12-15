@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
@@ -11,6 +12,7 @@ import (
 
 var (
 	errProfileRequered = errors.New("ap-5r: profile required for this command")
+	allyCodeRe         = regexp.MustCompile("^[0-9]{3,3}-?[0-9]{3,3}-?[0-9]{3,3}$")
 )
 
 // CmdRequest holds parsed data from the context of a MessageCreate event.
@@ -162,7 +164,7 @@ func (d *CmdDispatcher) Dispatch(s *discordgo.Session, m *discordgo.MessageCreat
 	}
 
 	// Hadle command and react with result
-	logger.Infof("Dispatching command %v", req)
+	logger.Infof("Dispatching command %#v", req)
 	err = h.HandleCommand(req)
 	result := emojiCheckMark
 	if err == errProfileRequered {

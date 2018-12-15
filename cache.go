@@ -210,10 +210,10 @@ func extractProfile(src string) string {
 	return results[0][1]
 }
 
-var allyCodeRe = regexp.MustCompile("https?://swgoh.gg/p/([0-9]+)/?")
+var allyCodeURLRe = regexp.MustCompile("https?://swgoh.gg/p/([0-9]+)/?")
 
 func extractAllyCode(src string) string {
-	results := allyCodeRe.FindAllStringSubmatch(strings.ToLower(src), -1)
+	results := allyCodeURLRe.FindAllStringSubmatch(strings.ToLower(src), -1)
 	if len(results) == 0 {
 		return ""
 	}
