@@ -1,12 +1,13 @@
 DOCKER_ARGS=
 APP=ap-5r
 PROJECT=swgoh-api
+VERSION=latest
 TOKEN=$(shell cat .token 2>/dev/null)
 
 build:
 	rm -f ap-5r && GOARCH=amd64 GOOS=linux go build -o $(APP)
 	docker build \
-		-t ronoaldo/$(APP):latest \
+		-t ronoaldo/$(APP):$(VERSION) \
 		--build-arg GIT_HASH=$$(git rev-parse --short HEAD) .
 
 run: build
@@ -21,10 +22,10 @@ run: build
 		--env SWGOH_CACHE_DIR=/tmp/cache \
 		--volume $(HOME)/.cache/api.swgoh.help:/tmp/cache \
 		-it $(DOCKER_ARGS) \
-		ronoaldo/$(APP):latest
+		ronoaldo/$(APP):$(VERSION)
 
 deploy: build
-	docker push ronoaldo/$(APP):latest
+	docker push ronoaldo/$(APP):$(VERSION)
 
 gce-reload:
 	gcloud --project=$(PROJECT) compute \
