@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net/url"
 	"regexp"
 	"strings"
@@ -13,11 +14,12 @@ import (
 
 // Cache holds guild-based cache information.
 type Cache struct {
-	guildID       string
-	profiles      map[string]string
-	allyCodes     map[string]string
-	profilesMutex sync.Mutex
-	logger        *Logger
+	guildID         string
+	profiles        map[string]string
+	allyCodes       map[string]string
+	profilesMutex   sync.Mutex
+	allyCodesMutext sync.Mutex
+	logger          *Logger
 }
 
 // NewCache creates a new cache for the given guild ID.
@@ -30,40 +32,54 @@ func NewCache(guildID, guildName string) *Cache {
 	}
 }
 
-// SetUserProfile stores the user profile in cache
-func (c *Cache) SetUserProfile(user, profile string) {
-	c.profilesMutex.Lock()
-	defer c.profilesMutex.Unlock()
-	c.profiles[user] = profile
+// UserProfile returns the profile associated with the user.
+func (c *Cache) UserProfile(discordUserID string) (string, bool) {
+	profile, ok := c.profiles[discordUserID]
+	return profile, ok
 }
 
 // UserProfileIfEmpty attempts to load a user profile if the first argument
 // is empty. Just a shorthand to get some syntax suggar.
-func (c *Cache) UserProfileIfEmpty(profile, user string) (string, bool) {
+func (c *Cache) UserProfileIfEmpty(profile, discordUserID string) (string, bool) {
 	if profile != "" {
 		return profile, true
 	}
-	return c.UserProfile(user)
+	return c.UserProfile(discordUserID)
+}
+
+// SetUserProfile stores the user profile in cache
+func (c *Cache) SetUserProfile(discordUserID, profile string) {
+	c.profilesMutex.Lock()
+	defer c.profilesMutex.Unlock()
+	c.profiles[discordUserID] = profile
 }
 
 // AllyCode returns the ally code for the provided user,
 // allowing the bot links from the old style to be compatible
 // and still used
-func (c *Cache) AllyCode(user string) string {
-	allyCode, ok := c.allyCodes[user]
+func (c *Cache) AllyCode(discordUserID string) (string, bool) {
+	c.logger.Infof("> Checking ally code for %v -> ", discordUserID)
+	allyCode, ok := c.allyCodes[discordUserID]
 	if !ok {
-		allyCode = swgohgg.NewClient(user).AllyCode()
-		if allyCode != "" {
-			c.allyCodes[user] = allyCode
+		profile, ok := c.profiles[discordUserID]
+		if !ok {
+			return "", false
 		}
+		allyCode = swgohgg.NewClient(profile).AllyCode()
+		if allyCode != "" {
+			c.SetAllyCode(discordUserID, allyCode)
+			return allyCode, true
+		}
+		return "", false
 	}
-	return allyCode
+	return allyCode, true
 }
 
-// UserProfile returns the profile associated with the user.
-func (c *Cache) UserProfile(user string) (string, bool) {
-	profile, ok := c.profiles[user]
-	return profile, ok
+// SetAllyCode associates the current AllyCode with the provided user.
+func (c *Cache) SetAllyCode(discordUserID, allyCode string) {
+	c.allyCodesMutext.Lock()
+	defer c.allyCodesMutext.Unlock()
+	c.allyCodes[discordUserID] = allyCode
 }
 
 // ListProfiles list all profiles in the current guild.
@@ -132,8 +148,21 @@ func (c *Cache) ReloadProfiles(s *discordgo.Session) (int, string, error) {
 			}
 			last = m.ID
 			c.logger.Printf("Parsing %v", m.Content)
-			profile := extractProfile(m.Content)
-			if profile == "" {
+
+			// Associates the profile/allycode to the posting user...
+			id := m.Author.ID
+			// ... or with the mentioned one
+			if len(m.Mentions) != 0 && !m.MentionEveryone {
+				c.logger.Printf("* Using mentioned ID: %v", m.Mentions)
+				id = m.Mentions[0].ID
+			}
+
+			// We are interested into allyCodes only.
+			var allyCode, profile string
+
+			allyCode = extractAllyCode(m.Content)
+			profile = extractProfile(m.Content)
+			if profile == "" && allyCode == "" {
 				errors = errors + "\n" + m.Content
 				continue
 			}
@@ -143,15 +172,14 @@ func (c *Cache) ReloadProfiles(s *discordgo.Session) (int, string, error) {
 				// We could decode, so let's encode again in a better way.
 				profile = strings.Replace(url.QueryEscape(aux), "+", "%20", -1)
 			}
-			// Associates the profiel link to the posting user
-			id := m.Author.ID
-			// ... or with the mentioned one
-			if len(m.Mentions) != 0 && !m.MentionEveryone {
-				c.logger.Printf("* Using mentioned ID: %v", m.Mentions)
-				id = m.Mentions[0].ID
+
+			if profile != "" {
+				c.SetUserProfile(id, profile)
 			}
-			c.SetUserProfile(id, profile)
-			c.logger.Printf("> Detected %v[%v]: %v", m.Author, m.Author.ID, profile)
+			if allyCode != "" {
+				c.SetAllyCode(id, allyCode)
+			}
+			c.logger.Printf("> Linked %v[%v]: allyCode:'%v'/profile:'%v'", m.Author, m.Author.ID, allyCode, profile)
 		}
 		if len(messages) < pageSize {
 			break
@@ -159,8 +187,8 @@ func (c *Cache) ReloadProfiles(s *discordgo.Session) (int, string, error) {
 		c.logger.Printf("> Waiting a bit to avoid doing a server overload...")
 		time.Sleep(1 * time.Second)
 	}
-	c.logger.Printf("Full profile list loaded %d", len(c.profiles))
-	c.logger.Printf("Ignored these invalid links:\n%v", errors)
+	c.logger.Printf("Full profile list loaded %d + %d", len(c.profiles), len(c.allyCodes))
+	// c.logger.Printf("Ignored these invalid links:\n%v", errors)
 	return len(c.profiles), errors, nil
 }
 
@@ -178,6 +206,21 @@ func extractProfile(src string) string {
 	if len(results[0]) == 0 {
 		return ""
 	}
+	log.Printf("> Found profile '%v'", results[0][1])
+	return results[0][1]
+}
+
+var allyCodeURLRe = regexp.MustCompile("https?://swgoh.gg/p/([0-9]+)/?")
+
+func extractAllyCode(src string) string {
+	results := allyCodeURLRe.FindAllStringSubmatch(strings.ToLower(src), -1)
+	if len(results) == 0 {
+		return ""
+	}
+	if len(results[0]) == 0 {
+		return ""
+	}
+	log.Printf("> Found ally code '%v'", results[0][1])
 	return results[0][1]
 }
 

@@ -7,11 +7,13 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/ronoaldo/swgoh"
 )
 
 // Collection parses a player home page and returns the entire collection list.
 func (c *Client) Collection() (collection Collection, err error) {
-	url := fmt.Sprintf("https://swgoh.gg/u/%s/collection/", c.profile)
+	allyCode := c.AllyCode()
+	url := fmt.Sprintf("https://swgoh.gg/p/%s/characters/", allyCode)
 	doc, err := c.Get(url)
 	if err != nil {
 		return nil, err
@@ -170,10 +172,11 @@ type CharacterSkill struct {
 
 // CharacterStats fetches the characer detail page and extracts all stats.
 func (c *Client) CharacterStats(char string) (*CharacterStats, error) {
-	charSlug := CharSlug(CharName(char))
-	doc, err := c.Get(fmt.Sprintf("https://swgoh.gg/u/%s/collection/%s/", c.profile, charSlug))
+	charSlug := CharSlug(swgoh.CharName(char))
+	allyCode := c.AllyCode()
+	doc, err := c.Get(fmt.Sprintf("https://swgoh.gg/p/%s/characters/%s", allyCode, charSlug))
 	if err != nil {
-		return nil, fmt.Errorf("swgohgg: profile %s may not have %s activated. (err=%v)", c.profile, CharName(char), err.Error())
+		return nil, fmt.Errorf("swgohgg: profile for '%s' may not have %s activated. (err=%v)", allyCode, swgoh.CharName(char), err.Error())
 	}
 
 	charStats := &CharacterStats{}

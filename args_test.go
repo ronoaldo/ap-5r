@@ -24,6 +24,8 @@ func TestParseArgs(t *testing.T) {
 			out: Args{Command: "mods", Name: "tie fighter pilot"}},
 		{in: "/mods tie fighter pilot <@!265070297504284682>",
 			out: Args{Command: "mods", Name: "tie fighter pilot"}},
+		{in: "/stats tfp [335983287]",
+			out: Args{Command: "stats", Name: "tfp", Profile: "335983287"}},
 	}
 
 	for i := range testCases {
