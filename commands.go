@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/ronoaldo/swgoh"
 	"github.com/ronoaldo/swgoh/swgohgg"
 	"github.com/ronoaldo/swgoh/swgohhelp"
 )
@@ -33,7 +34,7 @@ func cmdMods(r CmdRequest) (err error) {
 		send(r.s, r.m.ChannelID, "%s, use this command with a character name. Try this: /mods tfp", r.m.Author.Mention())
 		return nil
 	}
-	targetURL := fmt.Sprintf("https://swgoh.gg/p/%s/characters/%s", r.allyCode, swgohgg.CharSlug(swgohgg.CharName(char)))
+	targetURL := fmt.Sprintf("https://swgoh.gg/p/%s/characters/%s", r.allyCode, swgohgg.CharSlug(swgoh.CharName(char)))
 	querySelector := ".list-group.media-list.media-list-stream:nth-child(2)"
 	clickSelector := ".icon.icon-chevron-down.pull-left"
 	b, err := renderImageAt(r.l, targetURL, querySelector, clickSelector, "desktop")
@@ -44,7 +45,7 @@ func cmdMods(r CmdRequest) (err error) {
 	_, err = r.s.ChannelMessageSendComplex(r.m.ChannelID, &discordgo.MessageSend{
 		Content: "Here is the thing you asked " + r.m.Author.Mention(),
 		Embed: &discordgo.MessageEmbed{
-			Title: fmt.Sprintf("%s mods.jpg", swgohgg.CharName(char)),
+			Title: fmt.Sprintf("%s mods.jpg", swgoh.CharName(char)),
 			URL:   targetURL,
 			Image: &discordgo.MessageEmbedImage{
 				URL: "attachment://image.jpg",
@@ -78,7 +79,7 @@ func cmdStats(r CmdRequest) (err error) {
 	}
 	player := players[0]
 
-	charFilter := swgohgg.CharName(char)
+	charFilter := swgoh.CharName(char)
 	unit, ok := player.Roster.FindByName(charFilter)
 	if !ok {
 		send(r.s, r.m.ChannelID, "It looks like **%s** is not activated, is it %s?", char, r.m.Author.Mention())
@@ -86,9 +87,9 @@ func cmdStats(r CmdRequest) (err error) {
 	}
 	stats := unit.Stats.Final
 
-	char = swgohgg.CharName(char)
+	char = swgoh.CharName(char)
 	funCharTitle := char
-	switch strings.ToLower(swgohgg.CharName(char)) {
+	switch strings.ToLower(swgoh.CharName(char)) {
 	case "finn":
 		funCharTitle += " Traitor!!!"
 	case "sith assassin":
@@ -289,7 +290,7 @@ func cmdServerInfo(r CmdRequest) (err error) {
 	}
 	zetas := make([]swgohgg.Ability, 0)
 	for _, zeta := range allZetas {
-		if strings.ToLower(zeta.Character) == strings.ToLower(swgohgg.CharName(char)) {
+		if strings.ToLower(zeta.Character) == strings.ToLower(swgoh.CharName(char)) {
 			zetas = append(zetas, zeta)
 		}
 	}
@@ -328,7 +329,7 @@ func cmdServerInfo(r CmdRequest) (err error) {
 		total++
 	}
 	var msg bytes.Buffer
-	fmt.Fprintf(&msg, "From %d %s players, %d have %s\n", len(guildProfiles), r.guild.Name, total, swgohgg.CharName(char))
+	fmt.Fprintf(&msg, "From %d %s players, %d have %s\n", len(guildProfiles), r.guild.Name, total, swgoh.CharName(char))
 	fmt.Fprintf(&msg, "\n*Stars:*\n")
 	for i := 7; i >= 1; i-- {
 		count, ok := stars[i]
@@ -368,9 +369,9 @@ func cmdLookup(r CmdRequest) (err error) {
 	// query stuff here instead of this api calls.
 	ships := r.args.ContainsFlag("+ships", "+ship", "+s")
 
-	unit := swgohgg.CharName(r.args.Name)
+	unit := swgoh.CharName(r.args.Name)
 	if ships {
-		unit = swgohgg.ShipForCrew(unit)
+		unit = swgoh.ShipName(unit)
 	}
 	guildProfiles := r.cache.ListProfiles()
 
