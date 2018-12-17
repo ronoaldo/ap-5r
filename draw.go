@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"image"
+	"image/color"
+	"image/draw"
+	"math"
 	"os"
 	"strconv"
 
@@ -49,6 +52,8 @@ func init() {
 }
 
 type drawer struct {
+	player swgohhelp.Player
+
 	bold bool
 	size float64
 
@@ -210,6 +215,61 @@ func (d *drawer) DrawCharacterStats(u *swgohhelp.Unit) ([]byte, error) {
 		}
 	}
 
+	// Draw player info at bottom
+	d.x, d.y = 30, 895
+	d.textLeft()
+	d.printf(canvas, "%s - ", d.player.Name)
+	d.x += d.advanceX
+	d.color = "#00bdfe"
+	d.printf(canvas, "%s", d.player.Titles.Selected)
+
+	var b bytes.Buffer
+	if err := canvas.EncodePNG(&b); err != nil {
+		return nil, err
+	}
+	return b.Bytes(), nil
+}
+
+// DrawUnitList draw a unit list, 5 per row.
+// Usefull for drawing a team or a roster of units by category
+func (d *drawer) DrawUnitList(units []swgohhelp.Unit) ([]byte, error) {
+	// 5 per row, 100px per unit, 10px padding
+	padding := 20
+	portraitSize := 100
+	unitSize := portraitSize + padding*2
+	width := unitSize * 5
+	height := unitSize * int(math.Ceil((float64(len(units)) / 5.0)))
+
+	canvas := gg.NewContext(width, height)
+	canvas.SetHexColor("#0D1D25")
+	canvas.Clear()
+
+	// Use an asset bundle to save some disk I/O
+	bundle := &assetBundle{
+		ui: make(map[string]image.Image),
+	}
+
+	// draw each unit portrait
+	x, y := padding, padding
+	for _, u := range units {
+		portrait, err := loadAsset(fmt.Sprintf("characters/%s_portrait.png", u.Name))
+		if err != nil {
+			logger.Errorf("Error loading character image portrait %v: %v", u.Name, err)
+			continue
+		}
+		croppedPortrait := cropCircle(portrait)
+		canvas.DrawImage(croppedPortrait, x, y)
+
+		gear, err := bundle.loadUIAsset(fmt.Sprintf("ui/gear-icon-g%d_100x100.png", u.Gear))
+		if err != nil {
+			logger.Errorf("Error loading gear image for level %v: %v", u.Gear, err)
+			continue
+		}
+		canvas.DrawImage(gear, x, y)
+
+		x += unitSize
+	}
+
 	var b bytes.Buffer
 	if err := canvas.EncodePNG(&b); err != nil {
 		return nil, err
@@ -276,8 +336,30 @@ func (d *drawer) textRight() {
 	d.ax, d.ay = 1, 0.5
 }
 
+type assetBundle struct {
+	ui map[string]image.Image
+}
+
+func (a *assetBundle) loadUIAsset(file string) (image.Image, error) {
+	if img, ok := a.ui[file]; ok {
+		return img, nil
+	}
+
+	img, err := loadAsset(file)
+	if err != nil {
+		return nil, err
+	}
+
+	a.ui[file] = img
+	return img, nil
+}
+
 func loadAsset(file string) (image.Image, error) {
-	return gg.LoadPNG(os.Getenv("BOT_ASSET_DIR") + "/images/" + file)
+	assetDir := os.Getenv("BOT_ASSET_DIR")
+	if assetDir == "" {
+		assetDir = "."
+	}
+	return gg.LoadPNG(assetDir + "/images/" + file)
 }
 
 func loadFont(size float64, bold bool) (font.Face, error) {
@@ -295,4 +377,33 @@ func itoa(v int) string {
 
 func ftoa(v float64) string {
 	return fmt.Sprintf("%.02f%%", v*100)
+}
+
+type circle struct {
+	p image.Point
+	r int
+}
+
+func (c *circle) ColorModel() color.Model {
+	return color.AlphaModel
+}
+
+func (c *circle) Bounds() image.Rectangle {
+	return image.Rect(c.p.X-c.r, c.p.Y-c.r, c.p.X+c.r, c.p.Y+c.r)
+}
+
+func (c *circle) At(x, y int) color.Color {
+	xx, yy, rr := float64(x-c.p.X)+0.5, float64(y-c.p.Y)+0.5, float64(c.r)
+	if xx*xx+yy*yy < rr*rr {
+		return color.Alpha{255}
+	}
+	return color.Alpha{0}
+}
+
+func cropCircle(src image.Image) image.Image {
+	dst := image.NewRGBA(src.Bounds())
+	p := image.Point{X: 50, Y: 50}
+	r := 50
+	draw.DrawMask(dst, dst.Bounds(), src, image.ZP, &circle{p, r}, image.ZP, draw.Over)
+	return dst
 }

@@ -8,7 +8,14 @@ import (
 	"github.com/ronoaldo/swgoh/swgohhelp"
 )
 
-func TestDraw(t *testing.T) {
+var testPlayer = swgohhelp.Player{
+	Name: "Ronoaldo",
+	Titles: swgohhelp.PlayerTitle{
+		Selected: "Dark Side Historian",
+	},
+}
+
+func TestDrawCharacterStats(t *testing.T) {
 	units := []swgohhelp.Unit{
 		{
 			Name:   "Emperor Palpatine",
@@ -52,12 +59,49 @@ func TestDraw(t *testing.T) {
 		},
 	}
 
-	d := drawer{}
+	d := drawer{player: testPlayer}
 	for _, unit := range units {
 		if b, err := d.DrawCharacterStats(&unit); err != nil {
 			t.Fatalf("Unexpected error %v", err)
 		} else {
 			ioutil.WriteFile(fmt.Sprintf("/tmp/assets/%s.png", unit.Name), b, 0644)
+		}
+	}
+}
+
+func TestDrawUnitList(t *testing.T) {
+	teams := map[string][]swgohhelp.Unit{
+		"arena": []swgohhelp.Unit{
+			{
+				Name:   "Gar Saxon",
+				Rarity: 7, Gear: 12, Level: 85,
+			},
+			{
+				Name:   "Stormtrooper",
+				Rarity: 7, Gear: 12, Level: 85,
+			},
+			{
+				Name:   "General Veers",
+				Rarity: 7, Gear: 11, Level: 85,
+			},
+			{
+				Name:   "Colonel Starck",
+				Rarity: 7, Gear: 11, Level: 85,
+			},
+			{
+				Name:   "Range Trooper",
+				Rarity: 7, Gear: 11, Level: 85,
+			},
+		},
+	}
+
+	for team, units := range teams {
+		d := drawer{player: testPlayer}
+		b, err := d.DrawUnitList(units)
+		if err != nil {
+			t.Fatalf("Unexpected error drawing units: %v", err)
+		} else {
+			ioutil.WriteFile(fmt.Sprintf("/tmp/assets/team-%s.png", team), b, 0644)
 		}
 	}
 }
