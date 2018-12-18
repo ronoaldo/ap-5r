@@ -234,7 +234,7 @@ func (d *drawer) DrawCharacterStats(u *swgohhelp.Unit) ([]byte, error) {
 // Usefull for drawing a team or a roster of units by category
 func (d *drawer) DrawUnitList(units []swgohhelp.Unit) ([]byte, error) {
 	// 5 per row, 100px per unit, 10px padding
-	padding := 20
+	padding := 30
 	portraitSize := 100
 	unitSize := portraitSize + padding*2
 	width := unitSize * 5
@@ -251,7 +251,8 @@ func (d *drawer) DrawUnitList(units []swgohhelp.Unit) ([]byte, error) {
 
 	// draw each unit portrait
 	x, y := padding, padding
-	for _, u := range units {
+	for unitCount, u := range units {
+		// Draw portrait
 		portrait, err := loadAsset(fmt.Sprintf("characters/%s_portrait.png", u.Name))
 		if err != nil {
 			logger.Errorf("Error loading character image portrait %v: %v", u.Name, err)
@@ -260,14 +261,38 @@ func (d *drawer) DrawUnitList(units []swgohhelp.Unit) ([]byte, error) {
 		croppedPortrait := cropCircle(portrait)
 		canvas.DrawImage(croppedPortrait, x, y)
 
-		gear, err := bundle.loadUIAsset(fmt.Sprintf("ui/gear-icon-g%d_100x100.png", u.Gear))
-		if err != nil {
-			logger.Errorf("Error loading gear image for level %v: %v", u.Gear, err)
-			continue
+		// Draw gear
+		gear, _ := bundle.loadUIAsset(fmt.Sprintf("ui/gear-icon-g%d_100x100.png", u.Gear))
+		if gear != nil {
+			canvas.DrawImage(gear, x, y)
 		}
-		canvas.DrawImage(gear, x, y)
 
+		// Draw stars
+		starYellow, _ := bundle.loadUIAsset("ui/ap-5r-char-portrait_star-yellow.png")
+		starGray, _ := bundle.loadUIAsset("ui/ap-5r-char-portrait_star-gray.png")
+		if starYellow != nil {
+			cx, cy := x+(unitSize/4)+10, y+(unitSize/4)
+			rotate := []float64{0, -66, -43, -21, 0, 21, 43, 66}
+			for i := 1; i <= 7; i++ {
+				canvas.Push()
+				canvas.Stroke()
+				canvas.Translate(0.5, 0)
+				canvas.RotateAbout(gg.Radians(rotate[i]), f(cx), f(cy))
+				if u.Rarity >= i {
+					canvas.DrawImageAnchored(starYellow, cx, cy-26, 0.5, 0.5)
+				} else {
+					canvas.DrawImageAnchored(starGray, cx, cy-26, 0.5, 0.5)
+				}
+				canvas.Pop()
+			}
+		}
+
+		// Check offset
 		x += unitSize
+		if (unitCount+1)%5 == 0 {
+			y += unitSize
+			x = padding
+		}
 	}
 
 	var b bytes.Buffer
@@ -406,4 +431,8 @@ func cropCircle(src image.Image) image.Image {
 	r := 50
 	draw.DrawMask(dst, dst.Bounds(), src, image.ZP, &circle{p, r}, image.ZP, draw.Over)
 	return dst
+}
+
+func f(i int) float64 {
+	return float64(i)
 }

@@ -82,15 +82,37 @@ func TestDrawUnitList(t *testing.T) {
 			},
 			{
 				Name:   "General Veers",
-				Rarity: 7, Gear: 11, Level: 85,
+				Rarity: 7, Gear: 12, Level: 85,
 			},
 			{
 				Name:   "Colonel Starck",
-				Rarity: 7, Gear: 11, Level: 85,
+				Rarity: 7, Gear: 12, Level: 85,
 			},
 			{
 				Name:   "Range Trooper",
-				Rarity: 7, Gear: 11, Level: 85,
+				Rarity: 7, Gear: 12, Level: 85,
+			},
+		},
+		"random": []swgohhelp.Unit{
+			{
+				Name:   "Bossk",
+				Rarity: 3, Gear: 7, Level: 85,
+			},
+			{
+				Name:   "Jango Fett",
+				Rarity: 3, Gear: 8, Level: 85,
+			},
+			{
+				Name:   "Boba Fett",
+				Rarity: 7, Gear: 12, Level: 85,
+			},
+			{
+				Name:   "T3-M4",
+				Rarity: 3, Gear: 3, Level: 55,
+			},
+			{
+				Name:   "C-3PO",
+				Rarity: 7, Gear: 1, Level: 85,
 			},
 		},
 	}
