@@ -151,7 +151,7 @@ func (d *drawer) DrawCharacterStats(u *swgohhelp.Unit) ([]byte, error) {
 	d.bold = false
 	d.size = 30
 	for _, s := range []string{"Health", "Speed", "Potency", "Physical Damage",
-		"Physical Crit. Chance", "Armor", "Phisical Crit. Avoid."} {
+		"Physical Crit. Chance", "Armor", "Physical Crit. Avoid."} {
 		d.printf(canvas, s+":")
 		d.y += 110
 	}
