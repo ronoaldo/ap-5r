@@ -126,4 +126,17 @@ func TestDrawUnitList(t *testing.T) {
 			ioutil.WriteFile(fmt.Sprintf("/tmp/assets/team-%s.png", team), b, 0644)
 		}
 	}
+
+	var unitList []swgohhelp.Unit
+	for i := 0; i < 50; i++ {
+		unitList = append(unitList, teams["arena"]...)
+	}
+
+	d := drawer{player: testPlayer}
+	b, err := d.DrawUnitList(unitList)
+	if err != nil {
+		t.Fatalf("Unexpected error drawing a large image: %v", err)
+	} else {
+		ioutil.WriteFile("/tmp/assets/big-unit-list.png", b, 0644)
+	}
 }

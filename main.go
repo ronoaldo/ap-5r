@@ -74,27 +74,47 @@ func main() {
 	}
 	logger.Printf("Using rendering service at %v", renderPageHost)
 
-	// Start the websocket listener
-	dg, err := discordgo.New("Bot " + *token)
-	if err != nil {
-		logger.Fatalf("Error initializing: %v", err)
+	// Start the websocket listener shards
+	shardCount := 3
+	done := make(chan bool)
+
+	runShard := func(shardID int) {
+		dg, err := discordgo.New("Bot " + *token)
+		if err != nil {
+			logger.Fatalf("Error initializing: %v", err)
+		}
+
+		dg.ShardCount = shardCount
+		dg.ShardID = shardID
+
+		dg.AddHandler(ready)
+		dg.AddHandler(messageCreate)
+
+		err = dg.Open()
+		if err != nil {
+			logger.Fatalf("Error opening websocket: %v", err)
+		}
+
+		// Wait here until CTRL-C or other term signal is received.
+		logger.Infof("Bot shard %d is now running.  Press CTRL-C to exit.", shardID)
+		sc := make(chan os.Signal, 1)
+		signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill, syscall.SIGKILL)
+		<-sc
+		logger.Infof("Trying to close sessions...")
+		dg.Close()
+		done <- true
 	}
 
-	dg.AddHandler(ready)
-	dg.AddHandler(messageCreate)
-
-	err = dg.Open()
-	if err != nil {
-		logger.Fatalf("Error opening websocket: %v", err)
+	for sid := 0; sid < shardCount; sid++ {
+		logger.Infof("Launching shard ID %v", sid)
+		go runShard(sid)
 	}
-
-	// Wait here until CTRL-C or other term signal is received.
-	fmt.Println("Bot is now running.  Press CTRL-C to exit.")
-	sc := make(chan os.Signal, 1)
-	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill, syscall.SIGKILL)
-	<-sc
-	fmt.Println("Trying to close sessions...")
-	dg.Close()
+	logger.Infof("%v shards are running.", shardCount)
+	for i := 0; i < shardCount; i++ {
+		logger.Infof("One more shard terminated.")
+		<-done
+	}
+	fmt.Println("All shards exited. Terminating...")
 }
 
 // ready handles the event of a sucessfull startup and Discord API login as bot.
@@ -110,7 +130,7 @@ func ready(s *discordgo.Session, event *discordgo.Ready) {
 	} else {
 		logger.Infof("Profile updated: %v", u)
 	}
-	listMyGuilds(s)
+	logger.Infof("Guild count %d", listMyGuilds(s))
 }
 
 // onGuildJoin handles the event of joining a guild.
@@ -197,6 +217,7 @@ func download(logger *Logger, url string) ([]byte, error) {
 
 // listMyGuilds list all my guilds currently working on.
 func listMyGuilds(s *discordgo.Session) int {
+	logger.Printf("Running listMyGuilds ...")
 	last := ""
 	count := 0
 	pageSize := 100
@@ -215,6 +236,7 @@ func listMyGuilds(s *discordgo.Session) int {
 			break
 		}
 		time.Sleep(1 * time.Second)
+		logger.Printf("> Current guild count: %d ...", count)
 	}
 	return count
 }
