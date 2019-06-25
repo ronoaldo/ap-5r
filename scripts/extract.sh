@@ -1,7 +1,7 @@
 #!/bin/bash
 # Copyright Ronoaldo <ronoaldo@gmail.com> (C) 2018
 
-# Shell script to interact with ADB and grap images from SWGoH mobile game,
+# Shell script to interact with ADB and grab images from SWGoH mobile game,
 # process them and build a gallery style image set.
 
 set -e
