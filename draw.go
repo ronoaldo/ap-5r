@@ -36,6 +36,7 @@ var (
 		10: "#9241ff",
 		11: "#9241ff",
 		12: "#ffd036",
+		13: "#f57b42",
 	}
 )
 
@@ -129,14 +130,15 @@ func (d *drawer) DrawCharacterStats(u *swgohhelp.Unit) ([]byte, error) {
 		}
 	}
 	// Draw gear level
-	gearColor, ok := gearColors[u.Gear]
-	if !ok {
-		gearColor = "#ffffff"
-	}
 	d.x, d.y = 670, 715
-	d.color = gearColor
 	d.textRight()
-	d.printf(canvas, "Gear Lvl %d", u.Gear)
+	d.color = gearColor(u)
+	// Draw either relic of gear information
+	if u.Relic.Tier > 2 {
+		d.printf(canvas, "Relic Tier %d", u.Relic.Tier-2)
+	} else {
+		d.printf(canvas, "Gear Lvl %d", u.Gear)
+	}
 
 	// Start writting stats
 	d.x, d.y = 1024, 70
@@ -436,3 +438,17 @@ func cropCircle(src image.Image) image.Image {
 func f(i int) float64 {
 	return float64(i)
 }
+
+func gearColor(unit *swgohhelp.Unit) string {
+	if unit.Gear <= 12 {
+		return gearColors[unit.Gear]
+	}
+	if unit.Data == nil {
+		return "#ffffff"
+	}
+	if unit.Data.ForceAlignment == 2 {
+		return "#20d1e8"
+	}
+	return "#ff6666"
+}
+

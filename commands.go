@@ -86,7 +86,6 @@ func cmdStats(r CmdRequest) (err error) {
 		return
 	}
 	stats := unit.Stats.Final
-
 	char = swgoh.CharName(char)
 	funCharTitle := char
 	switch strings.ToLower(swgoh.CharName(char)) {

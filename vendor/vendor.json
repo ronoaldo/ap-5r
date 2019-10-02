@@ -41,8 +41,8 @@
 		{
 			"checksumSHA1": "O69Zog4pusQYk9e4YUg2n8vQh6o=",
 			"path": "github.com/ronoaldo/swgoh",
-			"revision": "22bf9f273e344bfea5bc301e9edbf99fd66a4d38",
-			"revisionTime": "2019-05-18T02:58:23Z"
+			"revision": "5d220d62df997d34a28d86b355cddc55eb0f1ead",
+			"revisionTime": "2019-10-02T01:44:40Z"
 		},
 		{
 			"checksumSHA1": "EMBV/ZmN5LM7EOhJuzA47sIAsxs=",
@@ -51,10 +51,10 @@
 			"revisionTime": "2018-12-16T17:47:23Z"
 		},
 		{
-			"checksumSHA1": "YiiGLaVyfHWWVzak9ffPnxwo1bo=",
+			"checksumSHA1": "BkoASHddmAi8KdYLK1b3iTLjr6A=",
 			"path": "github.com/ronoaldo/swgoh/swgohgg",
-			"revision": "b3711773663b377c8050ceb781a0bdb42fcfdff6",
-			"revisionTime": "2019-04-02T23:48:50Z"
+			"revision": "5d220d62df997d34a28d86b355cddc55eb0f1ead",
+			"revisionTime": "2019-10-02T01:44:40Z"
 		},
 		{
 			"checksumSHA1": "LDpG5gGqR/gu0IjvFywtn9ig3LI=",
@@ -63,10 +63,10 @@
 			"revisionTime": "2019-04-02T23:48:50Z"
 		},
 		{
-			"checksumSHA1": "1bje19/hPEzWVK4KVBkim9OSFqk=",
+			"checksumSHA1": "356JuH4uM14wGsvvDsaB3u6LMeo=",
 			"path": "github.com/ronoaldo/swgoh/swgohhelp",
-			"revision": "b3711773663b377c8050ceb781a0bdb42fcfdff6",
-			"revisionTime": "2019-04-02T23:48:50Z"
+			"revision": "5d220d62df997d34a28d86b355cddc55eb0f1ead",
+			"revisionTime": "2019-10-02T01:44:40Z"
 		},
 		{
 			"checksumSHA1": "QsE27lDPDYV0wY9WFEpWS+K4Yv0=",
