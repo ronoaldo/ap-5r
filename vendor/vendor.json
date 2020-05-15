@@ -39,10 +39,10 @@
 			"revisionTime": "2017-12-10T03:53:53Z"
 		},
 		{
-			"checksumSHA1": "O69Zog4pusQYk9e4YUg2n8vQh6o=",
+			"checksumSHA1": "3KKCoA+iZ0r0vBRnnHQcW8AR9S4=",
 			"path": "github.com/ronoaldo/swgoh",
-			"revision": "5d220d62df997d34a28d86b355cddc55eb0f1ead",
-			"revisionTime": "2019-10-02T01:44:40Z"
+			"revision": "301bfe3091fb437f46f6774f76577bc0385d6650",
+			"revisionTime": "2020-05-13T19:01:32Z"
 		},
 		{
 			"checksumSHA1": "EMBV/ZmN5LM7EOhJuzA47sIAsxs=",
@@ -53,20 +53,20 @@
 		{
 			"checksumSHA1": "BkoASHddmAi8KdYLK1b3iTLjr6A=",
 			"path": "github.com/ronoaldo/swgoh/swgohgg",
-			"revision": "5d220d62df997d34a28d86b355cddc55eb0f1ead",
-			"revisionTime": "2019-10-02T01:44:40Z"
+			"revision": "a2814e55be1351872ccdf4863bd2cb188b00620c",
+			"revisionTime": "2020-05-13T18:32:34Z"
 		},
 		{
 			"checksumSHA1": "LDpG5gGqR/gu0IjvFywtn9ig3LI=",
 			"path": "github.com/ronoaldo/swgoh/swgohgg/api",
-			"revision": "b3711773663b377c8050ceb781a0bdb42fcfdff6",
-			"revisionTime": "2019-04-02T23:48:50Z"
+			"revision": "a2814e55be1351872ccdf4863bd2cb188b00620c",
+			"revisionTime": "2020-05-13T18:32:34Z"
 		},
 		{
-			"checksumSHA1": "356JuH4uM14wGsvvDsaB3u6LMeo=",
+			"checksumSHA1": "P4k9nh3AAOqpsS3xCducG/4N2lo=",
 			"path": "github.com/ronoaldo/swgoh/swgohhelp",
-			"revision": "5d220d62df997d34a28d86b355cddc55eb0f1ead",
-			"revisionTime": "2019-10-02T01:44:40Z"
+			"revision": "301bfe3091fb437f46f6774f76577bc0385d6650",
+			"revisionTime": "2020-05-13T19:01:32Z"
 		},
 		{
 			"checksumSHA1": "QsE27lDPDYV0wY9WFEpWS+K4Yv0=",
@@ -145,6 +145,18 @@
 			"path": "golang.org/x/net/html/atom",
 			"revision": "42fe2e1c20de1054d3d30f82cc9fb5b41e2e3767",
 			"revisionTime": "2018-01-04T22:23:21Z"
+		},
+		{
+			"checksumSHA1": "Ld0iviZSRGAKK6WSoti+3++1RmY=",
+			"path": "golang.org/x/sys/internal/unsafeheader",
+			"revision": "bc7a7d42d5c30f4d0fe808715c002826ce2c624e",
+			"revisionTime": "2020-05-01T14:24:05Z"
+		},
+		{
+			"checksumSHA1": "HWgHttB8tEwacZ0Z2U3+lq7mmKk=",
+			"path": "golang.org/x/sys/unix",
+			"revision": "bc7a7d42d5c30f4d0fe808715c002826ce2c624e",
+			"revisionTime": "2020-05-01T14:24:05Z"
 		},
 		{
 			"checksumSHA1": "IV4MN7KGBSocu/5NR3le3sxup4Y=",
