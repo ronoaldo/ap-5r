@@ -542,6 +542,39 @@ func cmdLeaveGuild(r CmdRequest) (err error) {
 	return err
 }
 
+func cmdDebugImage(r CmdRequest) (err error) {
+    if !r.allyCodeOk {
+		return errProfileRequered
+	}
+	char := r.args.Name
+	if char == "" {
+		send(r.s, r.m.ChannelID, "Good, you are learning! But you need to provide a character name. Try /info tfp")
+		return nil
+	}
+	message := &discordgo.MessageSend{
+		Content: fmt.Sprintf("Testing the image drawing for character %s", char),
+    }
+    unit := &swgohhelp.Unit {
+        Name: swgoh.CharName(char),
+        Level: 13,
+        Rarity: 7,
+        Stats: &swgohhelp.UnitStats{
+            Final: swgohhelp.UnitStatItems{},
+            FromMods: swgohhelp.UnitStatItems{},
+        },
+    }
+	d := &drawer{}
+	b, err := d.DrawCharacterStats(unit)
+	if err != nil {
+        logger.Errorf("Error drawing image: %v", err)
+        return err
+    } else {
+		message.Files = newAttachment(b, fmt.Sprintf("Test drawing - %s.png", unit.Name))
+	}
+	_, err = r.s.ChannelMessageSendComplex(r.m.ChannelID, message)
+	return err
+}
+
 // cmdHelp displays the help message.
 func cmdHelp(req CmdRequest) (err error) {
 	m := "Hi **%s**, I'm AP-5R and I'm the Empire protocol droid unit that survived the Death Star destruction."

@@ -58,6 +58,7 @@ func init() {
 	dispatcher.Handle("guilds-i-am-running", CmdFunc(cmdBotStats))
 	dispatcher.Handle("reload-profiles", CmdFunc(cmdReloadProfiles))
 	dispatcher.Handle("leave-guild", CmdFunc(cmdLeaveGuild))
+	dispatcher.Handle("debug-image", CmdFunc(cmdDebugImage))
 }
 
 // main runs the main loop of our bot application.

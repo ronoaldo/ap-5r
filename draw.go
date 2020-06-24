@@ -95,7 +95,7 @@ func (d *drawer) DrawCharacterStats(u *swgohhelp.Unit) ([]byte, error) {
 	}
 	char, err := loadAsset(fmt.Sprintf("characters/%s.png", u.Name))
 	if err != nil {
-		logger.Errorf("Error loading character image %v", u.Name)
+		logger.Errorf("Error loading character characters/%s.png", u.Name)
 	}
 
 	// Prepare unit canvas
