@@ -26,13 +26,3 @@ run: build
 
 deploy: build
 	docker push ronoaldo/$(APP):$(VERSION)
-	gcloud container clusters get-credentials chatbots-cluster --project swgoh-api --zone=us-central1-a
-	kubectl set image deployments/ap-5r ap-5r=ronoaldo/$(APP):$(VERSION) --record
-
-gce-reload:
-	gcloud --project=$(PROJECT) compute \
-		ssh chatbots < scripts/reload.sh
-
-gce-logs:
-	gcloud --project=$(PROJECT) compute \
-		ssh chatbots < scripts/keep-logging.sh
