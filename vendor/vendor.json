@@ -41,32 +41,32 @@
 		{
 			"checksumSHA1": "Vzxhnszkqa7L2RGZYp2cP3K8EaA=",
 			"path": "github.com/ronoaldo/swgoh",
-			"revision": "517980d37ea9c690d502218498a30d20b24c90bb",
-			"revisionTime": "2020-05-16T18:26:25Z"
+			"revision": "b00e405bd451797afc3b729ff708f3bd449087c8",
+			"revisionTime": "2020-11-17T20:27:00Z"
 		},
 		{
 			"checksumSHA1": "EMBV/ZmN5LM7EOhJuzA47sIAsxs=",
 			"path": "github.com/ronoaldo/swgoh/cache",
-			"revision": "517980d37ea9c690d502218498a30d20b24c90bb",
-			"revisionTime": "2020-05-16T18:26:25Z"
+			"revision": "b00e405bd451797afc3b729ff708f3bd449087c8",
+			"revisionTime": "2020-11-17T20:27:00Z"
 		},
 		{
 			"checksumSHA1": "Ofh6KCaYbnrCD+wbEDzmLEaYtuc=",
 			"path": "github.com/ronoaldo/swgoh/swgohgg",
-			"revision": "517980d37ea9c690d502218498a30d20b24c90bb",
-			"revisionTime": "2020-05-16T18:26:25Z"
+			"revision": "b00e405bd451797afc3b729ff708f3bd449087c8",
+			"revisionTime": "2020-11-17T20:27:00Z"
 		},
 		{
 			"checksumSHA1": "LDpG5gGqR/gu0IjvFywtn9ig3LI=",
 			"path": "github.com/ronoaldo/swgoh/swgohgg/api",
-			"revision": "517980d37ea9c690d502218498a30d20b24c90bb",
-			"revisionTime": "2020-05-16T18:26:25Z"
+			"revision": "b00e405bd451797afc3b729ff708f3bd449087c8",
+			"revisionTime": "2020-11-17T20:27:00Z"
 		},
 		{
-			"checksumSHA1": "P4k9nh3AAOqpsS3xCducG/4N2lo=",
+			"checksumSHA1": "ZFbrXjyL3oxZ6LyAecvHRX1XFRM=",
 			"path": "github.com/ronoaldo/swgoh/swgohhelp",
-			"revision": "517980d37ea9c690d502218498a30d20b24c90bb",
-			"revisionTime": "2020-05-16T18:26:25Z"
+			"revision": "b00e405bd451797afc3b729ff708f3bd449087c8",
+			"revisionTime": "2020-11-17T20:27:00Z"
 		},
 		{
 			"checksumSHA1": "QsE27lDPDYV0wY9WFEpWS+K4Yv0=",
